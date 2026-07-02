@@ -1,0 +1,371 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2 } from 'lucide-react';
+import { getInitials, formatDate } from '@/lib/utils';
+import { Guest, Reservation } from '@/types';
+
+const AVATAR_COLORS = ['#6FA39A', '#A79BC9', '#7FAE93', '#D2A24C', '#CFA0B5', '#8CB9CE'];
+
+const EMPTY_FORM = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  nationality: '',
+  idType: 'Passport',
+  idNumber: '',
+  address: '',
+  notes: '',
+};
+
+export default function GuestsPage() {
+  const [search, setSearch] = useState('');
+  const [activeOnly, setActiveOnly] = useState(false);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
+
+  // Build a map of guestId → their active (checked_in) reservation
+  const activeReservationByGuest = new Map<number, Reservation>(
+    reservations
+      .filter(r => r.status === 'checked_in' && r.guestId !== undefined)
+      .map(r => [r.guestId as number, r])
+  );
+  const activeCount = activeReservationByGuest.size;
+
+  // Compute real stats from DB data
+  const now = new Date();
+  const thisMonth = { year: now.getFullYear(), month: now.getMonth() };
+  const repeatGuests = guests.filter(g => (g.totalStays ?? 0) >= 2).length;
+  const newThisMonth = guests.filter(g => {
+    if (!g.createdAt) return false;
+    const d = new Date(g.createdAt);
+    return d.getFullYear() === thisMonth.year && d.getMonth() === thisMonth.month;
+  }).length;
+
+  const fetchAll = useCallback(async (q?: string) => {
+    setLoading(true);
+    try {
+      const guestUrl = q ? `/api/guests?search=${encodeURIComponent(q)}` : '/api/guests';
+      const [guestRes, resRes] = await Promise.all([
+        fetch(guestUrl, { cache: 'no-store' }),
+        fetch('/api/reservations', { cache: 'no-store' }),
+      ]);
+      if (guestRes.ok) setGuests(await guestRes.json());
+      if (resRes.ok)   setReservations(await resRes.json());
+    } catch (err) {
+      console.error('Failed to fetch guests:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchAll(search || undefined), 300);
+    return () => clearTimeout(t);
+  }, [search, fetchAll]);
+
+  const filtered = activeOnly
+    ? guests.filter(g => activeReservationByGuest.has(g.id))
+    : guests;
+
+  function openModal() {
+    setForm(EMPTY_FORM);
+    setErrors({});
+    setShowModal(true);
+  }
+
+  function closeModal() { setShowModal(false); }
+
+  function validate() {
+    const e: Partial<typeof EMPTY_FORM> = {};
+    if (!form.firstName.trim()) e.firstName = 'Required';
+    if (!form.lastName.trim()) e.lastName = 'Required';
+    if (form.email && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email';
+    if (!form.idNumber.trim()) e.idNumber = 'Required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function handleSubmit() {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/guests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
+          nationality: form.nationality.trim() || null,
+          idType: form.idType,
+          idNumber: form.idNumber.trim(),
+          address: form.address.trim() || null,
+          notes: form.notes.trim() || null,
+        }),
+      });
+
+      if (res.ok) {
+        const newGuest = await res.json();
+        setGuests(prev => [newGuest, ...prev]);
+        closeModal();
+      } else {
+        const data = await res.json();
+        setErrors({ firstName: data.error || 'Failed to save guest.' });
+      }
+    } catch {
+      setErrors({ firstName: 'Network error. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle = (hasError?: string) => ({
+    width: '100%',
+    height: '38px',
+    padding: '0 12px',
+    borderRadius: '8px',
+    border: `1px solid ${hasError ? '#C97D6E' : 'var(--border)'}`,
+    background: 'var(--bg-input, var(--bg-hover))',
+    color: 'var(--text-primary)',
+    fontSize: '13px',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  });
+
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Stats */}
+      <div className="grid-cols-4">
+        <div className="surface" style={{ borderRadius: '12px', padding: '18px' }}>
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>Total Guests</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)' }}>{guests.length.toLocaleString()}</div>
+        </div>
+        <div className="surface" style={{ borderRadius: '12px', padding: '18px', borderColor: activeCount > 0 ? 'rgba(111,163,154,0.3)' : 'var(--border)' }}>
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>Currently Checked In</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: '#6FA39A' }}>{activeCount}</div>
+        </div>
+        <div className="surface" style={{ borderRadius: '12px', padding: '18px' }}>
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>Repeat Guests</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: '#7FAE93' }}>{repeatGuests}</div>
+        </div>
+        <div className="surface" style={{ borderRadius: '12px', padding: '18px' }}>
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>New This Month</div>
+          <div style={{ fontSize: '28px', fontWeight: 700, color: '#D2A24C' }}>{newThisMonth}</div>
+        </div>
+      </div>
+
+      {/* Search & Add */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="search-field">
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search guests..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} />
+          </div>
+          <button
+            onClick={() => setActiveOnly(v => !v)}
+            className={`btn ${activeOnly ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ height: '36px', fontSize: '12.5px' }}
+          >
+            <BedDouble size={14} /> Currently Staying {activeOnly ? `(${activeCount})` : ''}
+          </button>
+        </div>
+        <button className="btn btn-primary" style={{ height: '36px', fontSize: '12.5px' }} onClick={openModal}>
+          <Plus size={15} /> Add Guest
+        </button>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+          <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      )}
+
+      {/* Guest cards */}
+      {!loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+          {filtered.map((guest, i) => {
+            const activeReservation = activeReservationByGuest.get(guest.id);
+            return (
+            <div key={guest.id} className="surface" style={{ borderRadius: '12px', padding: '20px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+            >
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 700, color: 'white' }}>
+                    {getInitials(guest.firstName, guest.lastName)}
+                  </div>
+                  {activeReservation && (
+                    <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '12px', height: '12px', borderRadius: '50%', background: '#6FA39A', border: '2px solid var(--bg-surface)' }} title="Currently staying" />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{guest.firstName} {guest.lastName}</h3>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {activeReservation && (
+                        <span style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px', color: '#6FA39A', background: 'rgba(111,163,154,0.1)', padding: '2px 8px', borderRadius: '10px', border: '1px solid rgba(111,163,154,0.2)' }}>
+                          Active
+                        </span>
+                      )}
+                      {(guest.totalStays || 0) >= 3 && (
+                        <span style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px', color: '#D2A24C', background: 'rgba(210,162,76,0.1)', padding: '2px 8px', borderRadius: '10px', border: '1px solid rgba(210,162,76,0.2)' }}>
+                          <Star size={9} fill="#D2A24C" /> VIP
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{guest.nationality}</div>
+
+                  {activeReservation && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(111,163,154,0.06)', border: '1px solid rgba(111,163,154,0.15)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                        <BedDouble size={11} /> Room {activeReservation.room?.roomNumber}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                        <LogOut size={11} /> Check-out: <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatDate(activeReservation.checkOut)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                    {guest.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <Mail size={11} /> {guest.email}
+                      </div>
+                    )}
+                    {guest.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <Phone size={11} /> {guest.phone}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {guest.idType}: <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{guest.idNumber}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '13px' }}>{guest.totalStays ?? 0}</span> stays
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '14px' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>View History</button>
+                <button className="btn btn-primary" style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>Edit</button>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+          <Users size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
+          <p>{search ? 'No guests found matching your search.' : 'No guests yet. Add your first guest!'}</p>
+        </div>
+      )}
+
+      {/* Add Guest Modal */}
+      {showModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          onClick={e => { if (e.target === e.currentTarget) closeModal(); }}
+        >
+          <div className="surface" style={{ borderRadius: '16px', width: '100%', maxWidth: '520px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div>
+                <div className="font-display" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Add New Guest</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Saved directly to the database.</div>
+              </div>
+              <button onClick={closeModal} className="btn btn-ghost" style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {errors.firstName && !form.firstName && (
+                <div style={{ fontSize: '12.5px', color: '#C97D6E', padding: '10px 12px', borderRadius: '8px', background: 'rgba(201,125,110,0.08)', border: '1px solid rgba(201,125,110,0.2)' }}>
+                  {errors.firstName}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>First Name <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} placeholder="Juan" style={inputStyle(errors.firstName)} />
+                  {errors.firstName && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{errors.firstName}</div>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Last Name <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} placeholder="dela Cruz" style={inputStyle(errors.lastName)} />
+                  {errors.lastName && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{errors.lastName}</div>}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Email</label>
+                  <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="juan@email.com" type="email" style={inputStyle(errors.email)} />
+                  {errors.email && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{errors.email}</div>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Phone</label>
+                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+63 917 000 0000" style={inputStyle()} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Nationality</label>
+                <input value={form.nationality} onChange={e => setForm(f => ({ ...f, nationality: e.target.value }))} placeholder="Filipino" style={inputStyle()} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>ID Type</label>
+                  <select value={form.idType} onChange={e => setForm(f => ({ ...f, idType: e.target.value }))} style={{ ...inputStyle(), appearance: 'none' as const }}>
+                    <option>Passport</option>
+                    <option>Driver&apos;s License</option>
+                    <option>National ID</option>
+                    <option>SSS ID</option>
+                    <option>PhilHealth ID</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>ID Number <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={form.idNumber} onChange={e => setForm(f => ({ ...f, idNumber: e.target.value }))} placeholder="P1234567A" style={inputStyle(errors.idNumber)} />
+                  {errors.idNumber && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{errors.idNumber}</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
+              <button onClick={closeModal} disabled={saving} className="btn btn-ghost" style={{ height: '38px', fontSize: '13px' }}>Cancel</button>
+              <button onClick={handleSubmit} disabled={saving} className="btn btn-primary" style={{ height: '38px', fontSize: '13px', minWidth: '110px' }}>
+                {saving ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Plus size={14} />}
+                {saving ? 'Saving…' : 'Add Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
