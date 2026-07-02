@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
                 amount: '0' as unknown as string,
                 method: 'cash',
                 status: 'pending',
-                paymentType: null,
+                paymentType: undefined,
                 referenceNumber: null,
                 proofUrl: null,
                 verifiedBy: null,
