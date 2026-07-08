@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, CalendarCheck, BedDouble, Users,
-  CreditCard, Bell, Activity, Settings, X, Palmtree,
+  CreditCard, Bell, Activity, Settings, X,
 } from 'lucide-react';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 
@@ -57,12 +58,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div style={{ padding: '20px 18px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #6FA39A, #D2A24C)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Palmtree size={16} color="white" />
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
+              <Image
+                src="/icon.png"
+                alt="Kekamiya Beach Resort"
+                fill
+                className="object-contain drop-shadow"
+                sizes="36px"
+                priority
+              />
             </div>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: 'white', letterSpacing: '0.02em' }}>Resort Admin</span>
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'white', letterSpacing: '0.02em' }}>Kekamiya</span>
+              <span style={{ fontSize: '9px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>Beach Resort</span>
+            </div>
+          </Link>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'none' }} className="sidebar-close">
             <X size={18} />
           </button>
@@ -106,7 +117,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
-          Resort Management System
+          Kekamiya Management System
         </div>
       </aside>
     </>

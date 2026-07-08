@@ -7,20 +7,20 @@ function php(amount: string | number): string {
   return 'PHP ' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ─── Colour palette ──────────────────────────────────────────────────────────
+// ─── Colour palette — matched to Kekamiya Beach Resort logo ─────────────────
 type RGB = [number, number, number];
-const DEEP:    RGB = [22,  32,  44];   // near-black (header/footer bg)
-const GOLD:    RGB = [178, 140, 80];   // warm gold accent
-const GOLD2:   RGB = [210, 175, 110];  // lighter gold (text on dark)
-const CREAM:   RGB = [250, 247, 242];  // warm off-white section bg
-const MID:     RGB = [115, 122, 132];  // muted label
-const DARK:    RGB = [32,  40,  50];   // body text
-const WHITE:   RGB = [255, 255, 255];
-const GREEN:   RGB = [72,  158, 100];  // verified
-const AMBER:   RGB = [195, 125, 50];   // pending / balance
-const PURPLE:  RGB = [138, 98,  200];  // refunded
-const RED:     RGB = [200, 72,  65];   // rejected
-const SILVER:  RGB = [165, 168, 172];  // fine print
+const NAVY:   RGB = [0,   40,  100];  // deep navy (primary header bg)
+const TEAL:   RGB = [0,   160, 160];  // ocean teal accent
+const GREEN:  RGB = [0,   110, 50];   // forest green (verified)
+const AMBER:  RGB = [220, 140, 0];    // warm yellow-orange (balance/pending)
+const ORANGE: RGB = [230, 90,  0];    // sunset orange (accent detail)
+const CREAM:  RGB = [248, 251, 252];  // cool off-white section bg
+const MID:    RGB = [100, 115, 130];  // muted label
+const DARK:   RGB = [20,  35,  55];   // body text (dark navy)
+const WHITE:  RGB = [255, 255, 255];
+const SILVER: RGB = [160, 170, 180];  // fine print
+const PURPLE: RGB = [110, 70,  190];  // refunded
+const RED:    RGB = [200, 55,  55];   // rejected
 
 // ─── jsPDF type shorthand ────────────────────────────────────────────────────
 type Doc = InstanceType<typeof import('jspdf')['jsPDF']>;
@@ -35,21 +35,12 @@ function box(d: Doc, x: number, y: number, w: number, h: number, fill: RGB) {
   C.fill(d, fill); d.rect(x, y, w, h, 'F');
 }
 
-function line(d: Doc, y: number, x1: number, x2: number, color: RGB = GOLD, lw = 0.35) {
+function line(d: Doc, y: number, x1: number, x2: number, color: RGB = TEAL, lw = 0.35) {
   C.draw(d, color); d.setLineWidth(lw); d.line(x1, y, x2, y);
 }
 
-function diamonds(d: Doc, y: number, cx: number) {
-  // Three small diamond decorations around a centre point
-  const s = 1.4;
-  C.fill(d, GOLD);
-  [[cx - 7, y], [cx, y], [cx + 7, y]].forEach(([dx, dy]) => {
-    d.rect(dx - s / 2, dy - s / 2, s, s, 'F'); // jsPDF doesn't rotate natively, use square as diamond proxy
-  });
-}
-
 function label(d: Doc, y: number, text: string, x = 22) {
-  d.setFontSize(7.5); d.setFont('helvetica', 'bold'); C.text(d, GOLD);
+  d.setFontSize(7.5); d.setFont('helvetica', 'bold'); C.text(d, TEAL);
   d.text(text.toUpperCase(), x, y);
 }
 
@@ -69,7 +60,6 @@ function pill(d: Doc, text: string, x: number, y: number, color: RGB) {
   d.text(text, x + W / 2, y + 5.5, { align: 'center' });
 }
 
-// ─── "PAID" watermark stamp in the summary area ──────────────────────────────
 function stampPaid(d: Doc, cx: number, cy: number) {
   C.draw(d, GREEN); d.setLineWidth(1.8);
   d.roundedRect(cx - 24, cy - 8, 48, 16, 3, 3);
@@ -77,15 +67,33 @@ function stampPaid(d: Doc, cx: number, cy: number) {
   d.text('PAID', cx, cy + 6, { align: 'center' });
 }
 
+// ─── Load logo as base64 for embedding ───────────────────────────────────────
+async function loadLogoBase64(): Promise<string | null> {
+  try {
+    const res = await fetch('/icon.png');
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 export async function generateReceiptPDF(payment: Payment, reservation?: Reservation): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  const resort = process.env.NEXT_PUBLIC_RESORT_NAME || process.env.RESORT_NAME || 'The Resort';
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const LM = 18, RM = W - 18; // left / right margin
+  const LM = 18, RM = W - 18;
+
+  const resort = process.env.NEXT_PUBLIC_RESORT_NAME || process.env.RESORT_NAME || 'Kekamiya Beach Resort';
 
   const nights   = reservation ? calculateNights(reservation.checkIn, reservation.checkOut) : 0;
   const paid     = parseFloat(String(payment.amount));
@@ -93,52 +101,58 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
   const balance  = total - paid;
   const isVerified = payment.status === 'verified';
 
-  // ── A. Full-bleed dark header (64mm) ────────────────────────────────────
-  box(doc, 0, 0, W, 64, DEEP);
+  // Load logo ahead of drawing
+  const logoB64 = await loadLogoBase64();
 
-  // Top gold rule (2 px)
-  box(doc, 0, 0, W, 1.8, GOLD);
+  // ── A. Full-bleed dark header (68mm) ────────────────────────────────────
+  box(doc, 0, 0, W, 68, NAVY);
 
-  // Thin inner rule below top stripe
-  line(doc, 4, LM, RM, GOLD2, 0.2);
+  // Top teal stripe
+  box(doc, 0, 0, W, 2, TEAL);
 
-  // Resort name — large centred
-  doc.setFontSize(26); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
-  doc.text(resort, W / 2, 26, { align: 'center' });
+  // Logo — left of centre in header
+  if (logoB64) {
+    try {
+      doc.addImage(logoB64, 'PNG', LM, 10, 20, 20);
+    } catch { /* skip if image fails */ }
+  }
 
-  // Subtitle letter-spaced
-  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); C.text(doc, GOLD2);
-  doc.text('O F F I C I A L   P A Y M E N T   R E C E I P T', W / 2, 34, { align: 'center' });
+  // Resort name — centred (shifted right of logo area)
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
+  doc.text(resort, W / 2 + 6, 22, { align: 'center' });
 
-  // Thin gold rule under subtitle
-  line(doc, 38, LM + 20, RM - 20, GOLD2, 0.25);
+  // Subtitle
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); C.text(doc, TEAL);
+  doc.text('O F F I C I A L   P A Y M E N T   R E C E I P T', W / 2 + 6, 30, { align: 'center' });
 
-  // Receipt # and date — bottom-left of header
+  // Thin teal rule under subtitle
+  line(doc, 35, LM + 18, RM - 2, TEAL, 0.25);
+
+  // Receipt # and date
   doc.setFontSize(7.2); C.text(doc, SILVER);
   doc.setFont('helvetica', 'normal');
   doc.text(`Receipt No.  ${String(payment.id).padStart(6, '0')}`, LM, 48);
-  doc.text(`Issued  ${formatDateTime(new Date())}`, LM, 54);
+  doc.text(`Issued  ${formatDateTime(new Date())}`, LM, 55);
 
-  // Status pill — bottom-right of header
+  // Status pill
   const statusText  = (payment.status || 'pending').toUpperCase();
   const statusColor: RGB =
     payment.status === 'verified' ? GREEN :
     payment.status === 'refunded' ? PURPLE :
     payment.status === 'rejected' ? RED : AMBER;
-  pill(doc, statusText, RM - 34, 45, statusColor);
+  pill(doc, statusText, RM - 34, 46, statusColor);
 
-  // Bottom gold rule of header
-  box(doc, 62, 0, W, 2, GOLD);
+  // Bottom teal accent bar of header
+  box(doc, 0, 66, W, 2, TEAL);
 
-  // ── B. Three-diamond ornament on header edge ─────────────────────────────
-  // (drawn as small tilted squares — a jsPDF-compatible approximation)
-  const dmX = W / 2, dmY = 64;
-  box(doc, dmX - 8,  dmY - 1.2, 2.4, 2.4, GOLD);
-  box(doc, dmX - 1.2, dmY - 1.2, 2.4, 2.4, GOLD);
-  box(doc, dmX + 5.6, dmY - 1.2, 2.4, 2.4, GOLD);
+  // ── B. Diamond ornaments on header edge ─────────────────────────────────
+  const dmX = W / 2, dmY = 68;
+  box(doc, dmX - 8,   dmY - 1.2, 2.4, 2.4, TEAL);
+  box(doc, dmX - 1.2, dmY - 1.2, 2.4, 2.4, AMBER);
+  box(doc, dmX + 5.6, dmY - 1.2, 2.4, 2.4, TEAL);
 
   // ── C. Payment details section ───────────────────────────────────────────
-  let y = 74;
+  let y = 80;
 
   label(doc, y, 'Payment Details');
   y += 6;
@@ -154,10 +168,9 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
   if (payment.notes)
     y = kv(doc, y, 'Notes', payment.notes);
 
-  // Ornamental divider
   y += 4;
   line(doc, y, LM, RM);
-  box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, GOLD);
+  box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, TEAL);
   y += 8;
 
   // ── D. Reservation details ───────────────────────────────────────────────
@@ -190,10 +203,9 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
       y = kv(doc, y, 'Guests', g);
     }
 
-    // Ornamental divider
     y += 4;
     line(doc, y, LM, RM);
-    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, GOLD);
+    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, AMBER);
     y += 8;
   }
 
@@ -203,37 +215,33 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
 
   const rowH  = 8;
   const rows  = 2 + (balance !== 0 ? 1 : 0);
-  const boxH  = rows * rowH + 28; // rows + padding + big amount row
+  const boxH  = rows * rowH + 28;
   const boxY  = y;
 
-  // Cream background + border
   box(doc, LM, boxY, W - 36, boxH, CREAM);
-  C.draw(doc, [215, 208, 195] as RGB); doc.setLineWidth(0.3);
+  C.draw(doc, TEAL as RGB); doc.setLineWidth(0.3);
   doc.rect(LM, boxY, W - 36, boxH);
 
-  // Left gold accent bar
-  box(doc, LM, boxY, 2.5, boxH, GOLD);
+  // Left navy accent bar
+  box(doc, LM, boxY, 2.5, boxH, NAVY);
 
   y = boxY + 8;
 
-  // Row: total bill
   doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
   doc.text('Total Reservation', LM + 8, y);
   doc.setFont('helvetica', 'normal'); C.text(doc, DARK);
   doc.text(php(total), RM - 4, y, { align: 'right' });
   y += rowH;
 
-  // Row: amount paid
   doc.setFont('helvetica', 'normal'); C.text(doc, MID);
   doc.text('Amount Paid', LM + 8, y);
   doc.setFont('helvetica', 'bold'); C.text(doc, isVerified ? GREEN : DARK);
   doc.text(php(paid), RM - 4, y, { align: 'right' });
   y += rowH;
 
-  // Row: balance / overpayment (optional)
   if (balance !== 0) {
     const balLabel = balance > 0 ? 'Remaining Balance' : 'Overpayment';
-    const balColor: RGB = balance > 0 ? AMBER : [55, 115, 200];
+    const balColor: RGB = balance > 0 ? AMBER : TEAL;
     doc.setFont('helvetica', 'normal'); C.text(doc, MID);
     doc.text(balLabel, LM + 8, y);
     doc.setFont('helvetica', 'bold'); C.text(doc, balColor);
@@ -241,29 +249,25 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
     y += rowH;
   }
 
-  // Thin gold rule before the hero amount
   y += 2;
-  line(doc, y, LM + 4, RM - 4, GOLD, 0.3);
+  line(doc, y, LM + 4, RM - 4, TEAL, 0.3);
   y += 7;
 
-  // Hero amount (large)
-  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, DEEP);
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
   doc.text(php(paid), RM - 4, y, { align: 'right' });
 
-  // "AMOUNT PAID" micro-label
-  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, GOLD);
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, TEAL);
   doc.text('AMOUNT PAID', LM + 8, y);
 
-  // PAID stamp — only when verified
   if (isVerified) {
     stampPaid(doc, LM + 54, y - 5);
   }
 
   y = boxY + boxH + 12;
 
-  // ── F. Double gold rule ornament ─────────────────────────────────────────
-  line(doc, y,     LM, RM, GOLD, 0.8);
-  line(doc, y + 2, LM, RM, GOLD, 0.2);
+  // ── F. Double rule ornament ──────────────────────────────────────────────
+  line(doc, y,     LM, RM, NAVY, 0.8);
+  line(doc, y + 2, LM, RM, TEAL, 0.2);
   y += 14;
 
   // ── G. Fine print / thank-you ────────────────────────────────────────────
@@ -275,8 +279,8 @@ export async function generateReceiptPDF(payment: Payment, reservation?: Reserva
 
   // ── H. Footer ────────────────────────────────────────────────────────────
   const FY = H - 22;
-  box(doc, 0, FY, W, H - FY, DEEP);
-  box(doc, 0, FY, W, 0.8, GOLD);
+  box(doc, 0, FY, W, H - FY, NAVY);
+  box(doc, 0, FY, W, 1.2, TEAL);
 
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); C.text(doc, SILVER);
   doc.text(`Generated on ${formatDateTime(new Date())}   ·   ${resort}`, W / 2, FY + 9, { align: 'center' });
@@ -295,7 +299,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  const resort = process.env.NEXT_PUBLIC_RESORT_NAME || process.env.RESORT_NAME || 'The Resort';
+  const resort = process.env.NEXT_PUBLIC_RESORT_NAME || process.env.RESORT_NAME || 'Kekamiya Beach Resort';
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const LM = 18, RM = W - 18;
@@ -306,26 +310,29 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   const balance  = total - paid;
   const isVerified = payment.status === 'verified';
 
-  // ── A. Full-bleed dark header (64mm)
-  box(doc, 0, 0, W, 64, DEEP);
-  box(doc, 0, 0, W, 1.8, GOLD);
-  line(doc, 4, LM, RM, GOLD2, 0.2);
-  doc.setFontSize(26); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
-  doc.text(resort, W / 2, 26, { align: 'center' });
-  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); C.text(doc, GOLD2);
-  doc.text('O F F I C I A L   P A Y M E N T   R E C E I P T', W / 2, 34, { align: 'center' });
-  line(doc, 38, LM + 20, RM - 20, GOLD2, 0.25);
+  // ── A. Full-bleed dark header (68mm)
+  box(doc, 0, 0, W, 68, NAVY);
+  box(doc, 0, 0, W, 2, TEAL);
+
+  // Resort name
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
+  doc.text(resort, W / 2, 24, { align: 'center' });
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); C.text(doc, TEAL);
+  doc.text('O F F I C I A L   P A Y M E N T   R E C E I P T', W / 2, 32, { align: 'center' });
+  line(doc, 37, LM + 20, RM - 20, TEAL, 0.25);
+
   doc.setFontSize(7.2); C.text(doc, SILVER);
   doc.setFont('helvetica', 'normal');
   doc.text(`Receipt No.  ${String(payment.id).padStart(6, '0')}`, LM, 48);
-  doc.text(`Issued  ${formatDateTime(new Date())}`, LM, 54);
+  doc.text(`Issued  ${formatDateTime(new Date())}`, LM, 55);
+
   const statusText  = (payment.status || 'pending').toUpperCase();
   const statusColor: RGB =
     payment.status === 'verified' ? GREEN :
     payment.status === 'refunded' ? PURPLE :
     payment.status === 'rejected' ? RED : AMBER;
-  pill(doc, statusText, RM - 34, 45, statusColor);
-  line(doc, 64, 0, W, GOLD, 1.2);
+  pill(doc, statusText, RM - 34, 46, statusColor);
+  box(doc, 0, 66, W, 2, TEAL);
 
   let y = 78;
 
@@ -339,7 +346,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
     if (g.phone) y = kv(doc, y, 'Phone', g.phone);
     y += 4;
     line(doc, y, LM, RM);
-    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, GOLD);
+    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, TEAL);
     y += 8;
   }
 
@@ -347,7 +354,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   if (reservation) {
     label(doc, y, 'Reservation');
     y += 5;
-    y = kv(doc, y, 'Confirmation Code', reservation.confirmationCode, true, GOLD);
+    y = kv(doc, y, 'Confirmation Code', reservation.confirmationCode, true, TEAL);
     if (reservation.room) {
       y = kv(doc, y, 'Room', `${reservation.room.roomNumber} — ${reservation.room.type}`);
     }
@@ -361,7 +368,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
     }
     y += 4;
     line(doc, y, LM, RM);
-    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, GOLD);
+    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, AMBER);
     y += 8;
   }
 
@@ -374,7 +381,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   if (payment.verifiedAt) y = kv(doc, y, 'Verified At', formatDateTime(new Date(payment.verifiedAt)));
   y += 4;
   line(doc, y, LM, RM);
-  box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, GOLD);
+  box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, TEAL);
   y += 8;
 
   // ── E. Payment summary box
@@ -385,9 +392,9 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   const boxH = rows * rowH + 28;
   const boxY = y;
   box(doc, LM, boxY, W - 36, boxH, CREAM);
-  C.draw(doc, [215, 208, 195] as RGB); doc.setLineWidth(0.3);
+  C.draw(doc, TEAL as RGB); doc.setLineWidth(0.3);
   doc.rect(LM, boxY, W - 36, boxH);
-  box(doc, LM, boxY, 2.5, boxH, GOLD);
+  box(doc, LM, boxY, 2.5, boxH, NAVY);
   y = boxY + 8;
   doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
   doc.text('Total Reservation', LM + 8, y);
@@ -401,7 +408,7 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
   y += rowH;
   if (balance !== 0) {
     const balLabel = balance > 0 ? 'Remaining Balance' : 'Overpayment';
-    const balColor: RGB = balance > 0 ? AMBER : [55, 115, 200];
+    const balColor: RGB = balance > 0 ? AMBER : TEAL;
     doc.setFont('helvetica', 'normal'); C.text(doc, MID);
     doc.text(balLabel, LM + 8, y);
     doc.setFont('helvetica', 'bold'); C.text(doc, balColor);
@@ -409,20 +416,20 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
     y += rowH;
   }
   y += 2;
-  line(doc, y, LM + 4, RM - 4, GOLD, 0.3);
+  line(doc, y, LM + 4, RM - 4, TEAL, 0.3);
   y += 7;
-  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, DEEP);
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
   doc.text(php(paid), RM - 4, y, { align: 'right' });
-  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, GOLD);
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, TEAL);
   doc.text('AMOUNT PAID', LM + 8, y);
   if (isVerified) {
     stampPaid(doc, LM + 54, y - 5);
   }
   y = boxY + boxH + 12;
 
-  // ── F. Double gold rule ornament
-  line(doc, y,     LM, RM, GOLD, 0.8);
-  line(doc, y + 2, LM, RM, GOLD, 0.2);
+  // ── F. Double rule ornament
+  line(doc, y,     LM, RM, NAVY, 0.8);
+  line(doc, y + 2, LM, RM, TEAL, 0.2);
   y += 14;
 
   // ── G. Fine print / thank-you
@@ -434,13 +441,12 @@ export async function generateReceiptBuffer(payment: Payment, reservation?: Rese
 
   // ── H. Footer
   const FY = H - 22;
-  box(doc, 0, FY, W, H - FY, DEEP);
-  box(doc, 0, FY, W, 0.8, GOLD);
+  box(doc, 0, FY, W, H - FY, NAVY);
+  box(doc, 0, FY, W, 1.2, TEAL);
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); C.text(doc, SILVER);
   doc.text(`Generated on ${formatDateTime(new Date())}   ·   ${resort}`, W / 2, FY + 9, { align: 'center' });
   doc.text('For inquiries, please present this receipt together with your booking confirmation.', W / 2, FY + 15, { align: 'center' });
 
-  // ── Output as Buffer (server-side, no browser download)
   const code = reservation?.confirmationCode || `PAY${payment.id}`;
   const arrayBuffer = doc.output('arraybuffer');
   return {

@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import type { Reservation, Payment } from '@/types';
 import { formatCurrency, formatDate, calculateNights } from '@/lib/utils';
 
-const RESORT_NAME = process.env.RESORT_NAME || 'Your Resort';
+const RESORT_NAME = process.env.RESORT_NAME || 'Kekamiya Beach Resort';
 const RESORT_LOGO_URL = process.env.RESORT_LOGO_URL || '';
 const GMAIL_USER = process.env.GMAIL_USER || '';
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
