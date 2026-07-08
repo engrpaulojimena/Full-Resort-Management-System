@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, CheckCircle, XCircle, Eye, Loader2, FileDown, Plus } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import RecordPaymentModal from '@/components/payments/RecordPaymentModal';
@@ -27,24 +27,40 @@ export default function PaymentsPage() {
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [refundConfirm, setRefundConfirm] = useState<Payment | null>(null);
   const [refunding, setRefunding] = useState(false);
+  const [proofModalPayment, setProofModalPayment] = useState<Payment | null>(null);
   const { showToast, addNotification } = useNotifications();
 
-  const fetchPayments = useCallback(async () => {
+  const isMounted = useRef(true);
+
+  const fetchPayments = useCallback(async (showSpinner = true) => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/payments');
+      if (showSpinner) setLoading(true);
+      const res = await fetch('/api/payments', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed');
+      if (!isMounted.current) return;
       const data: Payment[] = await res.json();
-      // Sort newest first
       setPayments(data.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()));
     } catch {
-      showToast({ title: 'Error', description: 'Could not load payments from database.', variant: 'error' });
+      if (showSpinner) showToast({ title: 'Error', description: 'Could not load payments from database.', variant: 'error' });
     } finally {
-      setLoading(false);
+      if (isMounted.current && showSpinner) setLoading(false);
     }
   }, [showToast]);
 
-  useEffect(() => { fetchPayments(); }, [fetchPayments]);
+  useEffect(() => {
+    isMounted.current = true;
+    fetchPayments(true);
+
+    const interval = setInterval(() => fetchPayments(false), 10_000);
+    function onVisible() { if (document.visibilityState === 'visible') fetchPayments(false); }
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [fetchPayments]);
 
   const filtered = payments.filter(p => {
     const code = p.reservation?.confirmationCode?.toLowerCase() || '';
@@ -353,7 +369,13 @@ export default function PaymentsPage() {
                     <td style={{ fontSize: '12px' }}>{formatDate(p.createdAt!)}</td>
                     <td>
                       {p.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {p.proofUrl && (
+                            <button onClick={() => setProofModalPayment(p)} className="btn btn-ghost"
+                              style={{ padding: '4px 10px', fontSize: '11px', height: '28px', background: 'rgba(140,185,206,0.1)', color: '#8CB9CE', border: '1px solid rgba(140,185,206,0.3)' }}>
+                              <Eye size={11} /> Proof
+                            </button>
+                          )}
                           <button onClick={() => handleDecision(p, 'verified')} disabled={actioningId === p.id} className="btn"
                             style={{ padding: '4px 10px', fontSize: '11px', height: '28px', background: 'rgba(127,174,147,0.1)', color: '#7FAE93', border: '1px solid rgba(127,174,147,0.2)', opacity: actioningId === p.id ? 0.6 : 1 }}>
                             {actioningId === p.id ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> : <CheckCircle size={11} />} Verify
@@ -394,6 +416,85 @@ export default function PaymentsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Proof of Payment Modal */}
+      {proofModalPayment && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+          onClick={() => setProofModalPayment(null)}
+        >
+          <div
+            style={{ background: 'var(--surface)', borderRadius: '16px', padding: '24px', maxWidth: '560px', width: '100%', maxHeight: '90vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>Proof of Payment</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {proofModalPayment.reservation?.confirmationCode} · {proofModalPayment.referenceNumber}
+                </p>
+              </div>
+              <button onClick={() => setProofModalPayment(null)} className="btn btn-ghost" style={{ padding: '6px', fontSize: '18px', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '12px', background: 'var(--surface-alt)', borderRadius: '10px', fontSize: '13px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div><span style={{ color: 'var(--text-muted)' }}>Guest: </span><strong style={{ color: 'var(--text-primary)' }}>{proofModalPayment.reservation?.guest ? `${proofModalPayment.reservation.guest.firstName} ${proofModalPayment.reservation.guest.lastName}` : '—'}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Amount: </span><strong style={{ color: '#7FAE93' }}>{formatCurrency(proofModalPayment.amount)}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Method: </span><strong style={{ color: 'var(--text-primary)' }}>{METHOD_LABELS[proofModalPayment.method]}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Ref #: </span><strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{proofModalPayment.referenceNumber || '—'}</strong></div>
+            </div>
+
+            {proofModalPayment.proofUrl ? (
+              proofModalPayment.proofUrl.startsWith('data:image') ? (
+                <img
+                  src={proofModalPayment.proofUrl}
+                  alt="Proof of payment"
+                  style={{ width: '100%', borderRadius: '10px', border: '1px solid var(--border)', display: 'block' }}
+                />
+              ) : proofModalPayment.proofUrl.startsWith('data:application/pdf') ? (
+                <div style={{ textAlign: 'center', padding: '32px', background: 'var(--surface-alt)', borderRadius: '10px' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>PDF proof of payment</p>
+                  <a
+                    href={proofModalPayment.proofUrl}
+                    download={`proof-${proofModalPayment.reservation?.confirmationCode}.pdf`}
+                    className="btn btn-ghost"
+                    style={{ fontSize: '13px' }}
+                  >
+                    ⬇ Download PDF
+                  </a>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '32px', background: 'var(--surface-alt)', borderRadius: '10px' }}>
+                  <p style={{ color: 'var(--text-muted)' }}>Preview not available for this file type.</p>
+                </div>
+              )
+            ) : (
+              <div style={{ textAlign: 'center', padding: '32px', background: 'var(--surface-alt)', borderRadius: '10px' }}>
+                <p style={{ color: 'var(--text-muted)' }}>No proof uploaded for this payment.</p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button
+                onClick={() => { handleDecision(proofModalPayment, 'verified'); setProofModalPayment(null); }}
+                disabled={actioningId === proofModalPayment.id}
+                className="btn"
+                style={{ flex: 1, background: 'rgba(127,174,147,0.1)', color: '#7FAE93', border: '1px solid rgba(127,174,147,0.3)', fontSize: '13px' }}
+              >
+                <CheckCircle size={13} /> Verify Payment
+              </button>
+              <button
+                onClick={() => { handleDecision(proofModalPayment, 'rejected'); setProofModalPayment(null); }}
+                disabled={actioningId === proofModalPayment.id}
+                className="btn btn-danger"
+                style={{ flex: 1, fontSize: '13px' }}
+              >
+                <XCircle size={13} /> Reject
+              </button>
+            </div>
           </div>
         </div>
       )}

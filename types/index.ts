@@ -50,6 +50,7 @@ export interface Reservation {
   checkOut: Date;
   adults: number;
   children?: number;
+  guestName?: string;
   totalAmount: string;
   specialRequests?: string;
   source?: string;

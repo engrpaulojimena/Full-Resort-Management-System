@@ -58,12 +58,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // the bundled mock set if the API/DB isn't reachable (e.g. no DATABASE_URL
   // configured yet), so the bell still has something to show in dev.
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setNotifications(data);
-      })
-      .catch(() => {});
+    let isMounted = true;
+
+    function fetchNotifications() {
+      fetch('/api/notifications', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (isMounted && Array.isArray(data)) setNotifications(data);
+        })
+        .catch(() => {});
+    }
+
+    fetchNotifications();
+
+    // Silent background refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 10_000);
+    // Re-fetch when user tabs back in
+    function onVisible() { if (document.visibilityState === 'visible') fetchNotifications(); }
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   // ── Overstay checker ────────────────────────────────────────────────────────

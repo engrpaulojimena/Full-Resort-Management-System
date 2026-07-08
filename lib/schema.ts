@@ -61,6 +61,7 @@ export const reservations = pgTable('reservations', {
   checkOut: timestamp('check_out').notNull(),
   adults: integer('adults').notNull().default(1),
   children: integer('children').default(0),
+  guestName: varchar('guest_name', { length: 255 }),
   totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
   specialRequests: text('special_requests'),
   source: varchar('source', { length: 50 }),

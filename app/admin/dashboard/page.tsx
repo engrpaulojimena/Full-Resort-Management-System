@@ -38,29 +38,43 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    function fetchAll() {
-      setLoading(true);
-      Promise.all([
-        fetch('/api/rooms',          { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-        fetch('/api/reservations',   { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-        fetch('/api/payments',       { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-        fetch('/api/guests',         { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-        fetch('/api/activity-logs',  { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-      ]).then(([r, res, pay, g, l]) => {
+    let isMounted = true;
+
+    async function fetchAll(showSpinner = true) {
+      if (showSpinner) setLoading(true);
+      try {
+        const [r, res, pay, g, l] = await Promise.all([
+          fetch('/api/rooms',          { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+          fetch('/api/reservations',   { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+          fetch('/api/payments',       { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+          fetch('/api/guests',         { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+          fetch('/api/activity-logs',  { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+        ]);
+        if (!isMounted) return;
         setRooms(Array.isArray(r) ? r : []);
         setReservations(Array.isArray(res) ? res : []);
         setPayments(Array.isArray(pay) ? pay : []);
         setGuests(Array.isArray(g) ? g : []);
         setLogs(Array.isArray(l) ? l : []);
-      }).finally(() => setLoading(false));
+      } finally {
+        if (isMounted && showSpinner) setLoading(false);
+      }
     }
 
-    fetchAll();
+    fetchAll(true);
 
-    // Re-fetch whenever the user navigates back to this tab/page
-    function onVisible() { if (document.visibilityState === 'visible') fetchAll(); }
+    // Silent background refresh every 30 seconds — no spinner flicker
+    const interval = setInterval(() => fetchAll(false), 10_000);
+
+    // Also re-fetch immediately when user tabs back in
+    function onVisible() { if (document.visibilityState === 'visible') fetchAll(false); }
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const stats = useMemo(() => {

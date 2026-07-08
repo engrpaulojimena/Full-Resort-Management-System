@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       totalAmount,
       specialRequests,
       source,
+      guestName,
       status = 'pending',
     } = body;
 
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         checkOut: new Date(checkOut),
         adults: parseInt(adults) || 1,
         children: parseInt(children) || 0,
+        guestName: guestName || undefined,
         totalAmount: String(totalAmount),
         specialRequests,
         source,
@@ -76,13 +78,13 @@ export async function POST(req: NextRequest) {
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
       .where(eq(reservations.id, newReservation.id));
 
-    const guestName = joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest';
+    const displayName = guestName || (joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest');
     const roomLabel = joined.rooms ? `Room ${joined.rooms.roomNumber}` : 'a room';
     await db.insert(activityLogs).values({
       type: 'create',
       entity: 'reservation',
       entityId: newReservation.id,
-      description: `Created reservation ${confirmationCode} for ${guestName} — ${roomLabel}.`,
+      description: `Created reservation ${confirmationCode} for ${displayName} — ${roomLabel}.`,
     }).catch(() => {});
 
     return NextResponse.json({
@@ -142,12 +144,12 @@ export async function PATCH(req: NextRequest) {
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
       .where(eq(reservations.id, updated.id));
 
-    const guestName = joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest';
+    const displayName = joined.reservations.guestName || (joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest');
     await db.insert(activityLogs).values({
       type: status === 'cancelled' ? 'cancel' : 'update',
       entity: 'reservation',
       entityId: updated.id,
-      description: `${guestName}'s reservation ${updated.confirmationCode} marked as ${status.replace('_', ' ')}.`,
+      description: `${displayName}'s reservation ${updated.confirmationCode} marked as ${status.replace('_', ' ')}.`,
     }).catch(() => {});
 
     return NextResponse.json({

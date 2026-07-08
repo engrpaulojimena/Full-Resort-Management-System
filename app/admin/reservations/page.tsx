@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, CalendarCheck, Download, Loader2, LogIn, LogOut, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import NewReservationModal from '@/components/reservations/NewReservationModal';
@@ -9,9 +9,17 @@ import { getReservationPaymentSummary, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COL
 import { Reservation, Payment, ReservationStatus } from '@/types';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 
+/** Returns the name to display for a reservation — prefers the name typed at booking time. */
+function getDisplayName(r: { guestName?: string; guest?: { firstName: string; lastName: string } }): string {
+  if (r.guestName) return r.guestName;
+  if (r.guest) return `${r.guest.firstName} ${r.guest.lastName}`;
+  return 'Guest';
+}
+
 const STATUS_TABS: Array<{ value: string; label: string }> = [
   { value: 'all', label: 'All' },
   { value: 'pending', label: 'Pending' },
+  { value: 'expired', label: 'Expired' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'checked_in', label: 'Checked In' },
   { value: 'checked_out', label: 'Checked Out' },
@@ -26,6 +34,19 @@ const NEXT_ACTIONS: Record<ReservationStatus, Array<{ label: string; next: Reser
   checked_out: [],
   cancelled: [],
 };
+
+/**
+ * Returns true if a reservation is pending, has no payments, and was created
+ * more than 30 minutes ago — meaning the booking window has lapsed.
+ */
+function isExpiredPending(reservation: Reservation, payments: Payment[]): boolean {
+  if (reservation.status !== 'pending') return false;
+  const hasPayment = payments.some(p => p.reservationId === reservation.id);
+  if (hasPayment) return false;
+  const createdAt = new Date(reservation.createdAt ?? reservation.checkIn); // fallback to checkIn if no createdAt
+  const minutesElapsed = (Date.now() - createdAt.getTime()) / (1000 * 60);
+  return minutesElapsed > 30;
+}
 
 /** Returns how many hours a checked-in guest is past their check-out, or 0. */
 function getOverstayHours(reservation: Reservation): number {
@@ -46,32 +67,54 @@ export default function ReservationsPage() {
   const [actioningId, setActioningId] = useState<number | null>(null);
   const { showToast, addNotification } = useNotifications();
 
-  const fetchAll = useCallback(async () => {
+  const isMounted = useRef(true);
+
+  const fetchAll = useCallback(async (showSpinner = true) => {
     try {
-      setLoading(true);
-      const [resR, resP] = await Promise.all([fetch('/api/reservations'), fetch('/api/payments')]);
+      if (showSpinner) setLoading(true);
+      const [resR, resP] = await Promise.all([
+        fetch('/api/reservations', { cache: 'no-store' }),
+        fetch('/api/payments',     { cache: 'no-store' }),
+      ]);
       if (!resR.ok) throw new Error('Failed to fetch reservations');
+      if (!isMounted.current) return;
       const data: Reservation[] = await resR.json();
       setReservations(data);
       if (resP.ok) setPayments(await resP.json());
     } catch (err) {
       console.error(err);
-      showToast({ title: 'Error', description: 'Could not load reservations from database.', variant: 'error' });
+      if (showSpinner) showToast({ title: 'Error', description: 'Could not load reservations from database.', variant: 'error' });
     } finally {
-      setLoading(false);
+      if (isMounted.current && showSpinner) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    fetchAll();
+    isMounted.current = true;
+    fetchAll(true);
+
+    const interval = setInterval(() => fetchAll(false), 10_000);
+    function onVisible() { if (document.visibilityState === 'visible') fetchAll(false); }
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [fetchAll]);
 
   const filtered = reservations.filter(r => {
-    const guestName = `${r.guest?.firstName} ${r.guest?.lastName}`.toLowerCase();
+    const guestName = getDisplayName(r).toLowerCase();
     const matchSearch =
       r.confirmationCode.toLowerCase().includes(search.toLowerCase()) ||
       guestName.includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+    const expired = isExpiredPending(r, payments);
+    const matchStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'expired' && expired) ||
+      (statusFilter === 'pending' && r.status === 'pending' && !expired) ||
+      (statusFilter !== 'expired' && statusFilter !== 'pending' && r.status === statusFilter);
     return matchSearch && matchStatus;
   });
 
@@ -79,14 +122,14 @@ export default function ReservationsPage() {
     setReservations(prev => [reservation, ...prev]);
     showToast({
       title: 'Reservation created',
-      description: `${reservation.confirmationCode} for ${reservation.guest?.firstName} ${reservation.guest?.lastName} saved to database. Click "Confirm" to send the guest a confirmation email.`,
+      description: `${reservation.confirmationCode} for ${getDisplayName(reservation)} saved to database. Click "Confirm" to send the guest a confirmation email.`,
       variant: 'success',
     });
     // Add internal notification — no guest email yet; email is sent when staff clicks "Confirm"
     addNotification({
       type: 'new_reservation',
       title: 'New Reservation',
-      message: `${reservation.guest?.firstName} ${reservation.guest?.lastName} booked Room ${reservation.room?.roomNumber} for ${formatDate(reservation.checkIn)}–${formatDate(reservation.checkOut)}. Pending confirmation.`,
+      message: `${getDisplayName(reservation)} booked Room ${reservation.room?.roomNumber} for ${formatDate(reservation.checkIn)}–${formatDate(reservation.checkOut)}. Pending confirmation.`,
       entity: 'reservation',
       entityId: reservation.id,
       emailSent: false,
@@ -101,7 +144,7 @@ export default function ReservationsPage() {
       if (paymentSummary.status === 'unpaid') {
         showToast({
           title: 'Check-in blocked',
-          description: `${reservation.guest?.firstName} ${reservation.guest?.lastName} has no recorded payment. Please collect at least a deposit before checking in.`,
+          description: `${getDisplayName(reservation)} has no recorded payment. Please collect at least a deposit before checking in.`,
           variant: 'error',
         });
         return;
@@ -114,7 +157,7 @@ export default function ReservationsPage() {
       if (paymentSummary.status !== 'fully_paid' && paymentSummary.status !== 'overpaid') {
         const balance = paymentSummary.balance;
         const confirmed = window.confirm(
-          `⚠️ Outstanding Balance\n\n${reservation.guest?.firstName} ${reservation.guest?.lastName} still has an unpaid balance of ${new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(balance)}.\n\nDo you want to proceed with check-out anyway?`
+          `⚠️ Outstanding Balance\n\n${getDisplayName(reservation)} still has an unpaid balance of ${new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(balance)}.\n\nDo you want to proceed with check-out anyway?`
         );
         if (!confirmed) return;
       }
@@ -134,7 +177,7 @@ export default function ReservationsPage() {
       addNotification({
         type: next === 'cancelled' ? 'cancellation' : next === 'checked_in' ? 'check_in_today' : next === 'checked_out' ? 'check_out_today' : 'system',
         title: next === 'cancelled' ? 'Reservation Cancelled' : `Reservation ${next.replace('_', ' ')}`,
-        message: `${reservation.guest?.firstName} ${reservation.guest?.lastName}'s reservation ${reservation.confirmationCode} is now ${next.replace('_', ' ')}.`,
+        message: `${getDisplayName(reservation)}'s reservation ${reservation.confirmationCode} is now ${next.replace('_', ' ')}.`,
         entity: 'reservation',
         entityId: reservation.id,
         emailSent: false,
@@ -214,7 +257,7 @@ export default function ReservationsPage() {
                 const lateSummary = days >= 1 ? `${days} day${days > 1 ? 's' : ''} ${hours % 24}h` : `${hours} hour${hours > 1 ? 's' : ''}`;
                 return (
                   <span key={r.id} style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    <strong>{r.guest?.firstName} {r.guest?.lastName}</strong> — Room {r.room?.roomNumber} ({r.confirmationCode}) · {lateSummary} past check-out
+                    <strong>{getDisplayName(r)}</strong> — Room {r.room?.roomNumber} ({r.confirmationCode}) · {lateSummary} past check-out
                   </span>
                 );
               })}
@@ -235,7 +278,7 @@ export default function ReservationsPage() {
             }}>
             {t.label}
             <span style={{ marginLeft: '6px', fontSize: '10px', background: statusFilter === t.value ? 'rgba(255,255,255,0.22)' : 'var(--bg-hover)', padding: '1px 6px', borderRadius: '10px' }}>
-              {t.value === 'all' ? reservations.length : reservations.filter(r => r.status === t.value).length}
+              {t.value === 'all' ? reservations.length : t.value === 'expired' ? reservations.filter(r => isExpiredPending(r, payments)).length : t.value === 'pending' ? reservations.filter(r => r.status === 'pending' && !isExpiredPending(r, payments)).length : reservations.filter(r => r.status === t.value).length}
             </span>
           </button>
         ))}
@@ -286,9 +329,16 @@ export default function ReservationsPage() {
               <tbody>
                 {filtered.map(r => (
                   <tr key={r.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{r.confirmationCode}</td>
                     <td>
-                      <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>{r.guest?.firstName} {r.guest?.lastName}</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{r.confirmationCode}</div>
+                      {r.createdAt && (
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {new Date(r.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}{new Date(r.createdAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>{getDisplayName(r)}</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.guest?.email}</div>
                     </td>
                     <td>
@@ -301,7 +351,25 @@ export default function ReservationsPage() {
                     <td>{r.adults + (r.children || 0)} pax</td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <StatusBadge status={r.status} />
+                        {isExpiredPending(r, payments) ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            color: '#9E9E9E',
+                            background: 'rgba(158,158,158,0.12)',
+                            border: '1px solid rgba(158,158,158,0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            <XCircle size={10} /> Expired
+                          </span>
+                        ) : (
+                          <StatusBadge status={r.status} />
+                        )}
                         {(() => {
                           const hours = getOverstayHours(r);
                           if (hours <= 0) return null;
@@ -311,7 +379,7 @@ export default function ReservationsPage() {
                             : `Overstay: ${hours}h`;
                           return (
                             <span
-                              title={`${r.guest?.firstName} ${r.guest?.lastName} was supposed to check out ${days >= 1 ? `${days} day(s)` : `${hours} hour(s)`} ago.`}
+                              title={`${getDisplayName(r)} was supposed to check out ${days >= 1 ? `${days} day(s)` : `${hours} hour(s)`} ago.`}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -334,7 +402,9 @@ export default function ReservationsPage() {
                       </div>
                     </td>
                     <td>
-                      {(() => {
+                      {isExpiredPending(r, payments) ? (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
+                      ) : (() => {
                         const s = getReservationPaymentSummary(r, payments);
                         return (
                           <div style={{ minWidth: '90px' }}>
@@ -351,29 +421,35 @@ export default function ReservationsPage() {
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(r.totalAmount)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {NEXT_ACTIONS[r.status].map(action => (
-                          <button
-                            key={action.next}
-                            onClick={() => handleStatusChange(r, action.next)}
-                            disabled={actioningId === r.id}
-                            className="btn"
-                            style={{ padding: '4px 10px', fontSize: '11px', height: '28px', background: 'rgba(127,174,147,0.1)', color: '#7FAE93', border: '1px solid rgba(127,174,147,0.2)', opacity: actioningId === r.id ? 0.6 : 1 }}
-                          >
-                            {actioningId === r.id ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> : <action.icon size={11} />} {action.label}
-                          </button>
-                        ))}
-                        {(r.status === 'pending' || r.status === 'confirmed') && (
-                          <button
-                            onClick={() => handleStatusChange(r, 'cancelled')}
-                            disabled={actioningId === r.id}
-                            className="btn btn-danger"
-                            style={{ padding: '4px 10px', fontSize: '11px', height: '28px', opacity: actioningId === r.id ? 0.6 : 1 }}
-                          >
-                            <XCircle size={11} /> Cancel
-                          </button>
-                        )}
-                        {(r.status === 'checked_out' || r.status === 'cancelled') && (
+                        {isExpiredPending(r, payments) ? (
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No actions</span>
+                        ) : (
+                          <>
+                            {NEXT_ACTIONS[r.status].map(action => (
+                              <button
+                                key={action.next}
+                                onClick={() => handleStatusChange(r, action.next)}
+                                disabled={actioningId === r.id}
+                                className="btn"
+                                style={{ padding: '4px 10px', fontSize: '11px', height: '28px', background: 'rgba(127,174,147,0.1)', color: '#7FAE93', border: '1px solid rgba(127,174,147,0.2)', opacity: actioningId === r.id ? 0.6 : 1 }}
+                              >
+                                {actioningId === r.id ? <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> : <action.icon size={11} />} {action.label}
+                              </button>
+                            ))}
+                            {(r.status === 'pending' || r.status === 'confirmed') && (
+                              <button
+                                onClick={() => handleStatusChange(r, 'cancelled')}
+                                disabled={actioningId === r.id}
+                                className="btn btn-danger"
+                                style={{ padding: '4px 10px', fontSize: '11px', height: '28px', opacity: actioningId === r.id ? 0.6 : 1 }}
+                              >
+                                <XCircle size={11} /> Cancel
+                              </button>
+                            )}
+                            {(r.status === 'checked_out' || r.status === 'cancelled') && (
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No actions</span>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
