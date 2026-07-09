@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="admin-content">
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="admin-main">
+          <main className="admin-main animate-fade-in">
             {children}
           </main>
         </div>

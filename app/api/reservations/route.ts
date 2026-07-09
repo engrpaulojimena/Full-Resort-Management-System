@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { reservations, guests, rooms, activityLogs } from '@/lib/schema';
+import { reservations, guests, rooms, activityLogs, payments } from '@/lib/schema';
 import { eq, desc } from 'drizzle-orm';
 import { generateConfirmationCode } from '@/lib/utils';
 
@@ -13,11 +13,28 @@ export async function GET() {
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
       .orderBy(desc(reservations.createdAt));
 
-    const result = data.map(({ reservations: r, guests: g, rooms: rm }) => ({
-      ...r,
-      guest: g ?? undefined,
-      room: rm ?? undefined,
-    }));
+    // Fetch all payments and group by reservationId
+    const allPayments = await db.select().from(payments);
+    const paymentsByResId: Record<number, typeof allPayments> = {};
+    for (const p of allPayments) {
+      if (p.reservationId == null) continue;
+      if (!paymentsByResId[p.reservationId]) paymentsByResId[p.reservationId] = [];
+      paymentsByResId[p.reservationId].push(p);
+    }
+
+    const result = data.map(({ reservations: r, guests: g, rooms: rm }) => {
+      const resPayments = paymentsByResId[r.id] ?? [];
+      const amountPaid = resPayments
+        .filter(p => p.status === 'verified')
+        .reduce((s, p) => s + parseFloat(String(p.amount)), 0);
+      return {
+        ...r,
+        guest: g ?? undefined,
+        room: rm ?? undefined,
+        payments: resPayments,
+        amountPaid,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {

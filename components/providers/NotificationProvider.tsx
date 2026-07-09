@@ -72,7 +72,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     fetchNotifications();
 
     // Silent background refresh every 30 seconds
-    const interval = setInterval(fetchNotifications, 10_000);
+    const interval = setInterval(fetchNotifications, 120_000);
     // Re-fetch when user tabs back in
     function onVisible() { if (document.visibilityState === 'visible') fetchNotifications(); }
     document.addEventListener('visibilitychange', onVisible);

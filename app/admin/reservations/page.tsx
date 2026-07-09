@@ -93,7 +93,7 @@ export default function ReservationsPage() {
     isMounted.current = true;
     fetchAll(true);
 
-    const interval = setInterval(() => fetchAll(false), 10_000);
+    const interval = setInterval(() => fetchAll(false), 120_000);
     function onVisible() { if (document.visibilityState === 'visible') fetchAll(false); }
     document.addEventListener('visibilitychange', onVisible);
 
@@ -405,7 +405,7 @@ export default function ReservationsPage() {
                       {isExpiredPending(r, payments) ? (
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
                       ) : (() => {
-                        const s = getReservationPaymentSummary(r, payments);
+                        const s = getReservationPaymentSummary(r, (r as any).payments?.length ? (r as any).payments : payments.filter(p => p.reservationId === r.id));
                         return (
                           <div style={{ minWidth: '90px' }}>
                             <span style={{ fontSize: '10.5px', fontWeight: 600, color: PAYMENT_STATUS_COLORS[s.status], background: `${PAYMENT_STATUS_COLORS[s.status]}18`, padding: '2px 7px', borderRadius: '6px', whiteSpace: 'nowrap' }}>

@@ -37,7 +37,7 @@ export default function RecordPaymentModal({
   useEffect(() => {
     if (open) {
       setSelectedRes(preselected);
-      setResSearch(preselected ? `${preselected.confirmationCode} – ${preselected.guest?.firstName} ${preselected.guest?.lastName}` : '');
+      setResSearch(preselected ? `${preselected.confirmationCode} – ${preselected.guestName || `${preselected.guest?.firstName ?? ''} ${preselected.guest?.lastName ?? ''}`.trim()}` : '');
       setForm({ amount: '', method: 'cash', paymentType: 'deposit', referenceNumber: '', notes: '' });
       setError('');
     }
@@ -136,8 +136,20 @@ export default function RecordPaymentModal({
           {preselected ? (
             <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', background: 'var(--bg-hover)', padding: '10px 14px', borderRadius: '8px' }}>
               Reservation <strong style={{ color: 'var(--accent)' }}>{preselected.confirmationCode}</strong>
-              {' · '}{preselected.guest?.firstName} {preselected.guest?.lastName}
-              {' · '}Total: <strong>₱{parseFloat(String(preselected.totalAmount)).toLocaleString()}</strong>
+              {' · '}{preselected.guestName || `${preselected.guest?.firstName ?? ''} ${preselected.guest?.lastName ?? ''}`.trim() || 'Guest'}
+              {(() => {
+                const total = parseFloat(String(preselected.totalAmount || 0));
+                const paid = (preselected as any).payments
+                  ? (preselected as any).payments.filter((p: any) => p.status === 'verified').reduce((s: number, p: any) => s + parseFloat(p.amount), 0)
+                  : 0;
+                const remaining = total - paid;
+                return (
+                  <>
+                    {' · '}Total: <strong>₱{total.toLocaleString()}</strong>
+                    {paid > 0 && <> · Paid: <strong style={{color:'#7FAE93'}}>₱{paid.toLocaleString()}</strong> · <strong style={{color:'var(--accent)'}}>Balance: ₱{remaining.toLocaleString()}</strong></>}
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div style={{ position: 'relative' }}>
@@ -163,7 +175,7 @@ export default function RecordPaymentModal({
                     >
                       <div>
                         <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--accent)', fontFamily: 'monospace' }}>{r.confirmationCode}</div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{r.guest?.firstName} {r.guest?.lastName}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{r.guestName || `${r.guest?.firstName ?? ''} ${r.guest?.lastName ?? ''}`.trim() || 'Guest'}</div>
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>₱{parseFloat(String(r.totalAmount)).toLocaleString()}</div>
                     </div>
@@ -172,7 +184,14 @@ export default function RecordPaymentModal({
               )}
               {selectedRes && (
                 <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px', background: 'rgba(111,163,154,0.06)', borderRadius: '6px', border: '1px solid rgba(111,163,154,0.2)' }}>
-                  Total: <strong>₱{parseFloat(String(selectedRes.totalAmount)).toLocaleString()}</strong> · Status: {selectedRes.status}
+                  {(() => {
+                    const total = parseFloat(String(selectedRes.totalAmount || 0));
+                    const paid = (selectedRes as any).payments
+                      ? (selectedRes as any).payments.filter((p: any) => p.status === 'verified').reduce((s: number, p: any) => s + parseFloat(p.amount), 0)
+                      : 0;
+                    const remaining = total - paid;
+                    return <>Total: <strong>₱{total.toLocaleString()}</strong>{paid > 0 && <> · Paid: <strong style={{color:'#7FAE93'}}>₱{paid.toLocaleString()}</strong> · <strong style={{color:'var(--accent)'}}>Balance: ₱{remaining.toLocaleString()}</strong></>} · Status: {selectedRes.status}</>;
+                  })()}
                 </div>
               )}
             </div>
@@ -183,16 +202,20 @@ export default function RecordPaymentModal({
             <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Amount (₱) *</label>
             <input type="number" min="0" step="0.01" placeholder="0.00" value={form.amount}
               onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-              style={{ ...inputStyle, borderColor: (() => { const total = parseFloat(String(selectedRes?.totalAmount || 0)); const amt = parseFloat(form.amount || '0'); return amt > total && total > 0 ? 'rgba(210,162,76,0.6)' : undefined; })() }} />
+              style={{ ...inputStyle, borderColor: (() => { const total = parseFloat(String(selectedRes?.totalAmount || 0)); const paid = (selectedRes as any)?.payments ? (selectedRes as any).payments.filter((p: any) => p.status === 'verified').reduce((s: number, p: any) => s + parseFloat(p.amount), 0) : 0; const remaining = total - paid; const amt = parseFloat(form.amount || '0'); return amt > remaining && remaining > 0 ? 'rgba(210,162,76,0.6)' : undefined; })() }} />
             {(() => {
               const total = parseFloat(String(selectedRes?.totalAmount || 0));
+              const alreadyPaid = (selectedRes as any)?.payments
+                ? (selectedRes as any).payments.filter((p: any) => p.status === 'verified').reduce((s: number, p: any) => s + parseFloat(p.amount), 0)
+                : 0;
+              const remaining = total - alreadyPaid;
               const amt = parseFloat(form.amount || '0');
-              if (!selectedRes || !form.amount || amt <= 0 || total <= 0) return null;
-              const overage = amt - total;
+              if (!selectedRes || !form.amount || amt <= 0 || remaining <= 0) return null;
+              const overage = amt - remaining;
               if (overage > 0) return (
                 <div style={{ marginTop: '6px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(210,162,76,0.08)', border: '1px solid rgba(210,162,76,0.3)', fontSize: '12px', color: '#D2A24C', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
                   <span style={{ fontSize: '14px', lineHeight: 1 }}>⚠️</span>
-                  <span><strong>Overpayment alert:</strong> This amount exceeds the reservation total (₱{total.toLocaleString()}) by <strong>₱{overage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>. Double-check before saving.</span>
+                  <span><strong>Overpayment alert:</strong> This amount exceeds the remaining balance (₱{remaining.toLocaleString()}) by <strong>₱{overage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>. Double-check before saving.</span>
                 </div>
               );
               return null;

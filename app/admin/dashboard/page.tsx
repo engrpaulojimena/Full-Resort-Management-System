@@ -64,7 +64,7 @@ export default function DashboardPage() {
     fetchAll(true);
 
     // Silent background refresh every 30 seconds — no spinner flicker
-    const interval = setInterval(() => fetchAll(false), 10_000);
+    const interval = setInterval(() => fetchAll(false), 120_000);
 
     // Also re-fetch immediately when user tabs back in
     function onVisible() { if (document.visibilityState === 'visible') fetchAll(false); }
@@ -146,7 +146,8 @@ export default function DashboardPage() {
     return reservations
       .filter(r => r.status === 'checked_in')
       .map(r => {
-        const paymentSummary = getReservationPaymentSummary(r, payments);
+        const resPayments = (r as any).payments?.length ? (r as any).payments : payments.filter(p => p.reservationId === r.id);
+        const paymentSummary = getReservationPaymentSummary(r, resPayments);
         const checkOut = new Date(r.checkOut);
         const overstayHours = checkOut < now ? Math.floor((now.getTime() - checkOut.getTime()) / (1000 * 60 * 60)) : 0;
         return { ...r, paymentSummary, overstayHours };

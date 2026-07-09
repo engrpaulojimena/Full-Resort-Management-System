@@ -15,10 +15,17 @@ async function fetchPaymentWithJoins(paymentId: number) {
 
   if (joined.length === 0) return null;
   const row = joined[0];
+  const g = row.guests;
+  const r = row.reservations;
   return {
     ...row.payments,
-    reservation: row.reservations
-      ? { ...row.reservations, guest: row.guests ?? undefined, room: row.rooms ?? undefined }
+    reservation: r
+      ? {
+          ...r,
+          guestName: r.guestName || (g ? `${g.firstName} ${g.lastName}`.trim() : undefined),
+          guest: g ?? undefined,
+          room: row.rooms ?? undefined,
+        }
       : undefined,
   };
 }
@@ -33,12 +40,21 @@ export async function GET() {
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
       .orderBy(desc(payments.createdAt));
 
-    const result = data.map(({ payments: p, reservations: r, guests: g, rooms: rm }) => ({
-      ...p,
-      reservation: r
-        ? { ...r, guest: g ?? undefined, room: rm ?? undefined }
-        : undefined,
-    }));
+    const result = data.map(({ payments: p, reservations: r, guests: g, rooms: rm }) => {
+      const resolvedName = r?.guestName || (g ? `${g.firstName ?? ''} ${g.lastName ?? ''}`.trim() : undefined);
+      console.log('[payments-debug]', r?.confirmationCode, '| r.guestName:', r?.guestName, '| g.firstName:', g?.firstName, '| resolved:', resolvedName);
+      return {
+        ...p,
+        reservation: r
+          ? {
+              ...r,
+              guestName: resolvedName,
+              guest: g ?? undefined,
+              room: rm ?? undefined,
+            }
+          : undefined,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -82,15 +98,23 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, status } = body;
+    const { id, status, amount, notes } = body;
 
-    if (!id || !status) {
-      return NextResponse.json({ error: 'Payment ID and status are required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
     }
 
-    const updateData: Record<string, unknown> = { status };
-    if (status === 'verified') {
-      updateData.verifiedAt = new Date();
+    const updateData: Record<string, unknown> = {};
+    if (status) {
+      updateData.status = status;
+      if (status === 'verified') updateData.verifiedAt = new Date();
+    }
+    if (amount !== undefined) updateData.amount = String(amount);
+    if (notes !== undefined) updateData.notes = notes;
+    updateData.updatedAt = new Date();
+
+    if (Object.keys(updateData).length === 1) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     }
 
     const [updated] = await db
