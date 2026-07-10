@@ -8,6 +8,7 @@ import { User as UserType, UserRole } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; icon: typeof Shield }> = {
+  super_admin: { label: 'Super Admin', color: '#C45C3A', bg: 'rgba(196,92,58,0.14)',  icon: ShieldCheck },
   admin:       { label: 'Admin',       color: '#A9803C', bg: 'rgba(210,162,76,0.14)', icon: ShieldCheck },
   manager:     { label: 'Manager',     color: '#6FA39A', bg: 'rgba(111,163,154,0.1)', icon: Shield },
   staff:       { label: 'Staff',       color: '#83837B', bg: 'rgba(176,176,166,0.1)', icon: User },
@@ -41,7 +42,7 @@ export default function UsersPage() {
   const [formError, setFormError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  const canManage = currentUser?.role === 'admin';
+  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   function loadUsers() {
     fetch('/api/users', { cache: 'no-store' })
