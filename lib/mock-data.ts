@@ -106,7 +106,7 @@ export const mockPayments: Payment[] = [
 ];
 
 export const mockUsers: User[] = [
-  { id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@resort.com', role: 'super_admin', isActive: true, lastLoginAt: new Date(), createdAt: new Date('2024-01-01') },
+  { id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@resort.com', role: 'admin', isActive: true, lastLoginAt: new Date(), createdAt: new Date('2024-01-01') },
   { id: 2, firstName: 'Liza', lastName: 'Gomez', email: 'liza@resort.com', role: 'receptionist', isActive: true, lastLoginAt: new Date('2025-07-01'), createdAt: new Date('2024-03-01') },
   { id: 3, firstName: 'Marco', lastName: 'Villanueva', email: 'marco@resort.com', role: 'staff', isActive: true, lastLoginAt: new Date('2025-06-30'), createdAt: new Date('2024-05-01') },
 ];

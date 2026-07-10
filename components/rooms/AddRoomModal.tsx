@@ -249,11 +249,16 @@ export default function RoomModal({ open, onOpenChange, mode: initialMode, room,
   const [images, setImages] = useState<string[]>([]);
   const [form, setForm] = useState(blankForm());
 
-  // Sync mode and form whenever modal opens or room changes
+  // Sync mode whenever initialMode or open changes
   useEffect(() => {
     if (!open) return;
     setMode(initialMode);
     setError('');
+  }, [open, initialMode]);
+
+  // Populate form whenever the modal opens or the target room changes
+  useEffect(() => {
+    if (!open) return;
     if (initialMode === 'add') {
       setForm(blankForm());
       setImages([]);
@@ -270,7 +275,7 @@ export default function RoomModal({ open, onOpenChange, mode: initialMode, room,
       });
       setImages(room.images || []);
     }
-  }, [open, initialMode, room]);
+  }, [open, room, initialMode]);
 
   async function handleSubmit() {
     setError('');

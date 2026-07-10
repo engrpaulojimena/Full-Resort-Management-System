@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, FileDown, Loader2, AlertTriangle, CheckCircle,
-  XCircle, Eye, RotateCcw, ChevronRight,
-  BedDouble, CalendarCheck, Users, Waves,
+  XCircle, Eye, RotateCcw, BedDouble, CalendarCheck, Users, Waves,
 } from 'lucide-react';
 import { Payment, Reservation } from '@/types';
 import { formatCurrency, formatDate, calculateNights } from '@/lib/utils';
@@ -21,8 +20,11 @@ const METHOD_LABELS: Record<string, string> = {
   credit_card: 'Credit Card', maya: 'Maya',
 };
 const METHOD_COLORS: Record<string, string> = {
-  cash: '#52C48A', gcash: '#4A9EE8', bank_transfer: '#F0A84B',
-  credit_card: '#B97FD8', maya: '#3EB8E8',
+  cash:          '#16a34a',
+  gcash:         '#2563eb',
+  bank_transfer: '#d97706',
+  credit_card:   '#7c3aed',
+  maya:          '#0284c7',
 };
 const STATUS_ICON: Record<string, React.ReactNode> = {
   verified: <CheckCircle size={11} />,
@@ -31,7 +33,22 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   refunded: <RotateCcw size={11} />,
 };
 const STATUS_COLOR: Record<string, string> = {
-  verified: '#52C48A', pending: '#E8B84B', rejected: '#E05B5B', refunded: '#B97FD8',
+  verified: '#16a34a',
+  pending:  '#d97706',
+  rejected: '#dc2626',
+  refunded: '#7c3aed',
+};
+const STATUS_BG: Record<string, string> = {
+  verified: '#f0fdf4',
+  pending:  '#fffbeb',
+  rejected: '#fef2f2',
+  refunded: '#f5f3ff',
+};
+const STATUS_BORDER: Record<string, string> = {
+  verified: '#bbf7d0',
+  pending:  '#fde68a',
+  rejected: '#fecaca',
+  refunded: '#ddd6fe',
 };
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
@@ -48,33 +65,23 @@ function useIsMobile(breakpoint = 700) {
 }
 
 // ── Arc gauge ─────────────────────────────────────────────────────────────────
-function ProgressArc({ percent, status, size = 88 }: { percent: number; status: string; size?: number }) {
-  const R = size * 0.41;
-  const STROKE = size * 0.065;
+function ProgressArc({ percent, status, size = 80 }: { percent: number; status: string; size?: number }) {
+  const R = size * 0.38;
+  const STROKE = size * 0.07;
   const C = 2 * Math.PI * R;
   const filled = C * Math.min(percent, 100) / 100;
-  const color = PAYMENT_STATUS_COLORS[status as keyof typeof PAYMENT_STATUS_COLORS] ?? '#52C48A';
+  const color = STATUS_COLOR[status === 'fully_paid' ? 'verified' : status] ?? '#16a34a';
   const isSettled = status === 'fully_paid' || status === 'overpaid';
   const cx = size / 2, cy = size / 2;
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <defs>
-          <filter id="arc-glow">
-            <feGaussianBlur stdDeviation="2" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <linearGradient id="arc-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="1" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.6" />
-          </linearGradient>
-        </defs>
-        <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={STROKE} />
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="#e5e7eb" strokeWidth={STROKE} />
         <circle cx={cx} cy={cy} r={R} fill="none"
-          stroke="url(#arc-grad)" strokeWidth={STROKE}
+          stroke={color} strokeWidth={STROKE}
           strokeDasharray={`${filled} ${C}`} strokeLinecap="round"
-          transform={`rotate(-90 ${cx} ${cy})`} filter="url(#arc-glow)"
+          transform={`rotate(-90 ${cx} ${cy})`}
           style={{ transition: 'stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)' }}
         />
       </svg>
@@ -82,11 +89,11 @@ function ProgressArc({ percent, status, size = 88 }: { percent: number; status: 
         position: 'absolute', inset: 0,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: size * 0.2, fontWeight: 800, color, lineHeight: 1, letterSpacing: '-1px' }}>
+        <span style={{ fontSize: size * 0.22, fontWeight: 800, color, lineHeight: 1, letterSpacing: '-1px' }}>
           {isSettled ? '✓' : `${Math.round(percent)}%`}
         </span>
-        <span style={{ fontSize: size * 0.1, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>
-          {isSettled ? 'Settled' : status === 'refunded' ? 'Refund' : 'Partial'}
+        <span style={{ fontSize: size * 0.11, color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '1px' }}>
+          {isSettled ? 'Settled' : 'Paid'}
         </span>
       </div>
     </div>
@@ -95,91 +102,101 @@ function ProgressArc({ percent, status, size = 88 }: { percent: number; status: 
 
 // ── Payment card ──────────────────────────────────────────────────────────────
 function PaymentCard({
-  p, siblings, onPrint, printing, actioningId,
+  p, actioningId,
   onVerify, onReject, onViewProof, onRefund,
 }: {
-  p: Payment; siblings: Payment[];
-  onPrint: (p: Payment, s: Payment[]) => void;
-  printing: boolean; actioningId: number | null;
+  p: Payment;
+  actioningId: number | null;
   onVerify?: (p: Payment) => void;
   onReject?: (p: Payment) => void;
   onViewProof?: (p: Payment) => void;
   onRefund?: (p: Payment) => void;
 }) {
   const isActioning = actioningId === p.id;
-  const sc = STATUS_COLOR[p.status] ?? '#aaa';
-  const mc = METHOD_COLORS[p.method] ?? '#aaa';
+  const sc = STATUS_COLOR[p.status] ?? '#6b7280';
+  const sbg = STATUS_BG[p.status] ?? '#f9fafb';
+  const sborder = STATUS_BORDER[p.status] ?? '#e5e7eb';
+  const mc = METHOD_COLORS[p.method] ?? '#6b7280';
 
   return (
     <div style={{
       borderRadius: '12px',
-      background: 'rgba(255,255,255,0.035)',
-      border: `1px solid ${sc}22`,
-      overflow: 'hidden',
-      transition: 'border-color 0.2s',
+      background: '#ffffff',
+      border: `1px solid ${sborder}`,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
     }}>
-      {/* Color accent line */}
-      <div style={{ height: '2px', background: `linear-gradient(90deg, ${sc}BB, ${sc}11)` }} />
+      {/* Top accent strip */}
+      <div style={{ height: '3px', background: sc, borderRadius: '12px 12px 0 0' }} />
 
-      <div style={{ padding: '12px 14px' }}>
-        {/* Top row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '16px', fontWeight: 800, color: '#EDF2F7', letterSpacing: '-0.5px' }}>
-              {formatCurrency(p.amount)}
-            </span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace' }}>#{p.id}</span>
-          </div>
+      <div style={{ padding: '14px 16px' }}>
+        {/* Amount + Status */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <span style={{ fontSize: '17px', fontWeight: 800, color: '#111827', letterSpacing: '-0.5px' }}>
+            {formatCurrency(p.amount)}
+          </span>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: '4px',
-            fontSize: '10px', fontWeight: 700, color: sc,
+            fontSize: '11px', fontWeight: 600, color: sc,
             padding: '3px 10px', borderRadius: '20px',
-            background: `${sc}12`, border: `1px solid ${sc}28`,
+            background: sbg, border: `1px solid ${sborder}`,
           }}>
             {STATUS_ICON[p.status]}
             {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
           </span>
         </div>
 
-        {/* Tags row */}
+        {/* Tags + meta */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', fontWeight: 600, background: `${mc}15`, color: mc, border: `1px solid ${mc}20` }}>
+          <span style={{
+            fontSize: '10px', padding: '2px 8px', borderRadius: '6px',
+            fontWeight: 600, background: `${mc}12`, color: mc,
+            border: `1px solid ${mc}25`,
+          }}>
             {METHOD_LABELS[p.method] ?? p.method}
           </span>
-          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>
+          <span style={{
+            fontSize: '10px', padding: '2px 8px', borderRadius: '6px',
+            background: '#f3f4f6', color: '#6b7280', fontWeight: 500,
+            border: '1px solid #e5e7eb',
+          }}>
             {PAYMENT_TYPE_LABELS[p.paymentType ?? 'full'] ?? p.paymentType}
           </span>
           {p.notes?.includes('website') && (
-            <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '5px', background: 'rgba(74,158,232,0.12)', color: '#4A9EE8', fontWeight: 600 }}>web</span>
+            <span style={{
+              fontSize: '9px', padding: '2px 7px', borderRadius: '5px',
+              background: '#eff6ff', color: '#2563eb', fontWeight: 600,
+              border: '1px solid #bfdbfe',
+            }}>web</span>
           )}
-          {p.referenceNumber && (
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginLeft: 'auto' }}>
-              ref: {p.referenceNumber}
+          <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {p.referenceNumber && (
+              <span style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'monospace' }}>
+                ref: {p.referenceNumber}
+              </span>
+            )}
+            <span style={{ fontSize: '10px', color: '#9ca3af' }}>
+              {formatDate(p.createdAt!)}
             </span>
-          )}
-          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.22)' }}>
-            {formatDate(p.createdAt!)}
           </span>
         </div>
 
         {/* Actions */}
         {p.status === 'pending' && (onVerify || onReject || onViewProof) && (
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-            {p.proofUrl && onViewProof && <ActionBtn onClick={() => onViewProof(p)} color="#4A9EE8" icon={<Eye size={10} />} label="View Proof" />}
-            {onVerify && <ActionBtn onClick={() => onVerify(p)} color="#52C48A" icon={isActioning ? <Spin /> : <CheckCircle size={10} />} label="Verify" disabled={isActioning} />}
-            {onReject && <ActionBtn onClick={() => onReject(p)} color="#E05B5B" icon={isActioning ? <Spin /> : <XCircle size={10} />} label="Reject" disabled={isActioning} />}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+            {p.proofUrl && onViewProof && <ActionBtn onClick={() => onViewProof(p)} color="#2563eb" icon={<Eye size={10} />} label="View Proof" />}
+            {onVerify && <ActionBtn onClick={() => onVerify(p)} color="#16a34a" icon={isActioning ? <Spin /> : <CheckCircle size={10} />} label="Verify" disabled={isActioning} />}
+            {onReject && <ActionBtn onClick={() => onReject(p)} color="#dc2626" icon={isActioning ? <Spin /> : <XCircle size={10} />} label="Reject" disabled={isActioning} />}
           </div>
         )}
-        {p.status === 'verified' && (
-          <div style={{ display: 'flex', gap: '5px' }}>
-            <ActionBtn onClick={() => onPrint(p, siblings)} color="#52C48A" icon={printing ? <Spin /> : <FileDown size={10} />} label="Receipt" disabled={printing} />
-            {onRefund && <ActionBtn onClick={() => onRefund(p)} color="#B97FD8" icon={<RotateCcw size={10} />} label="Refund" disabled={isActioning} />}
+        {p.status === 'verified' && onRefund && (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<RotateCcw size={10} />} label="Refund" disabled={isActioning} />
           </div>
         )}
         {p.status === 'rejected' && onRefund && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', color: 'rgba(224,91,91,0.4)', fontStyle: 'italic', flex: 1 }}>Payment rejected</span>
-            <ActionBtn onClick={() => onRefund(p)} color="#B97FD8" icon={<RotateCcw size={10} />} label="Mark Refunded" disabled={isActioning} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+            <span style={{ fontSize: '11px', color: '#dc262680', fontStyle: 'italic', flex: 1 }}>Payment rejected</span>
+            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<RotateCcw size={10} />} label="Mark Refunded" disabled={isActioning} />
           </div>
         )}
       </div>
@@ -194,9 +211,9 @@ function ActionBtn({ onClick, color, icon, label, disabled }: {
   return (
     <button onClick={onClick} disabled={disabled} style={{
       display: 'inline-flex', alignItems: 'center', gap: '5px',
-      padding: '5px 11px', borderRadius: '7px',
+      padding: '5px 12px', borderRadius: '7px',
       fontSize: '11px', fontWeight: 600, color,
-      background: `${color}10`, border: `1px solid ${color}25`,
+      background: `${color}0F`, border: `1px solid ${color}30`,
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.45 : 1,
       transition: 'all 0.15s',
@@ -227,7 +244,7 @@ export default function PaymentSummaryModal({
   onVerify, onReject, onViewProof, onRefund,
   actioningId = null,
 }: Props) {
-  const [printingId, setPrintingId] = useState<number | null>(null);
+
   const [printingAll, setPrintingAll] = useState(false);
   const [receiptType, setReceiptType] = useState<'partial' | 'full'>('partial');
   const [activeTab, setActiveTab] = useState<'payments' | 'summary'>('payments');
@@ -236,7 +253,7 @@ export default function PaymentSummaryModal({
   const summary     = reservation ? getReservationPaymentSummary(reservation, payments) : null;
   const isFullyPaid = summary ? summary.status === 'fully_paid' || summary.status === 'overpaid' : false;
   const nights      = reservation ? calculateNights(reservation.checkIn, reservation.checkOut) : 0;
-  const statusColor = summary ? (PAYMENT_STATUS_COLORS[summary.status as keyof typeof PAYMENT_STATUS_COLORS] ?? '#52C48A') : '#52C48A';
+  const paidColor   = isFullyPaid ? '#16a34a' : '#d97706';
 
   const verified = payments.filter(p => p.status === 'verified');
   const pending  = payments.filter(p => p.status === 'pending');
@@ -248,219 +265,212 @@ export default function PaymentSummaryModal({
     return (g ? `${g.firstName ?? ''} ${g.lastName ?? ''}`.trim() : '') || reservation?.guestName || 'Payment Summary';
   })();
 
-  async function handlePrintSingle(p: Payment, siblings: Payment[]) {
-    setPrintingId(p.id);
-    try { await generateReceiptPDF(p, reservation, siblings); } finally { setPrintingId(null); }
-  }
-
   async function handlePrintAll() {
     if (!verified.length) return;
     setPrintingAll(true);
     try {
-      if (receiptType === 'full') {
-        await generateReceiptPDF(verified[verified.length - 1], reservation, payments);
-      } else {
-        await generateReceiptPDF(verified[0], reservation, []);
-      }
+      const anchor = verified[0];
+      await generateReceiptPDF(anchor, reservation, payments.filter(p => p.id !== anchor.id));
     } finally { setPrintingAll(false); }
   }
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  const balance = summary?.balance ?? 0;
+  const totalPaid = summary?.totalPaid ?? 0;
+  const totalAmount = summary?.totalAmount ?? 0;
+  const totalPending = summary?.totalPending ?? 0;
+
   return (
     <>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.97) translateY(10px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
         }
         .psm-scroll::-webkit-scrollbar { width: 4px; }
         .psm-scroll::-webkit-scrollbar-track { background: transparent; }
-        .psm-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .psm-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-        .psm-card-hover:hover { background: rgba(255,255,255,0.055) !important; }
+        .psm-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
       `}</style>
 
-      {/* Full-page overlay */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        width: '100vw', height: '100vh',
-        background: 'rgba(4,10,20,0.88)',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        alignItems: 'stretch',
-        justifyContent: 'center',
-      }} onClick={onClose}>
-
-        {/* Modal container — always fills full viewport height */}
+      {/* Overlay — flex column so modal can be centered but also scrollable */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(15,23,42,0.5)',
+          backdropFilter: 'blur(8px)',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: isMobile ? 'stretch' : 'center',
+          justifyContent: isMobile ? 'stretch' : 'flex-start',
+          padding: isMobile ? '0' : '20px',
+        }}
+      >
+        {/* Modal */}
         <div
           onClick={e => e.stopPropagation()}
           style={{
             width: '100%',
-            maxWidth: '1080px',
-            height: '100vh',
+            maxWidth: '980px',
+            /* Let height be driven by viewport, shrinks at low zoom, grows at high zoom */
+            height: isMobile ? '100dvh' : 'calc(100dvh - 40px)',
+            minHeight: '400px',
             display: 'flex',
             flexDirection: 'column',
-            background: '#080F1A',
-            animation: 'fadeSlide 0.22s ease-out',
+            background: '#ffffff',
+            borderRadius: isMobile ? '0' : '16px',
             overflow: 'hidden',
-            position: 'relative',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+            animation: 'modalIn 0.2s ease-out',
+            /* Centers vertically when viewport is taller than modal */
+            margin: isMobile ? '0' : 'auto',
+            flexShrink: 0,
           }}
         >
-
-          {/* ── HERO HEADER ────────────────────────────────────────────── */}
+          {/* ── HEADER ─────────────────────────────────────────────────────── */}
           <div style={{
             flexShrink: 0,
-            background: 'linear-gradient(150deg, #02111F 0%, #011829 45%, #01203A 100%)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            position: 'relative',
-            overflow: 'hidden',
-            padding: 'clamp(20px, 3vw, 36px) clamp(20px, 4vw, 48px)',
+            background: '#ffffff',
+            borderBottom: '1px solid #e5e7eb',
+            padding: isMobile ? '14px 16px' : '18px 28px',
           }}>
-
-            {/* Background texture blobs */}
-            <div style={{
-              position: 'absolute', top: -80, right: -60,
-              width: 'clamp(200px, 30vw, 380px)',
-              height: 'clamp(200px, 30vw, 380px)',
-              borderRadius: '50%',
-              background: `radial-gradient(circle, ${statusColor}14 0%, transparent 65%)`,
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              position: 'absolute', bottom: -40, left: -20,
-              width: 'clamp(100px, 20vw, 220px)',
-              height: 'clamp(100px, 20vw, 220px)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(74,158,232,0.07) 0%, transparent 65%)',
-              pointerEvents: 'none',
-            }} />
-
-            {/* Top bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'clamp(14px, 2vw, 24px)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Waves size={14} style={{ color: statusColor, opacity: 0.7 }} />
-                {reservation ? (
+            {/* Top bar: code + close */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Waves size={14} style={{ color: '#9ca3af' }} />
+                {reservation?.confirmationCode && (
                   <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '5px',
-                    fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em',
-                    color: `${statusColor}CC`,
-                    background: `${statusColor}10`, border: `1px solid ${statusColor}25`,
-                    padding: '4px 12px', borderRadius: '20px',
+                    fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em',
+                    color: '#6b7280', background: '#f3f4f6',
+                    padding: '3px 10px', borderRadius: '20px',
+                    border: '1px solid #e5e7eb',
                   }}>
-                    <ChevronRight size={9} style={{ opacity: 0.5 }} />
                     {reservation.confirmationCode}
                   </span>
-                ) : null}
+                )}
               </div>
               <button onClick={onClose} style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px', width: '34px', height: '34px',
+                background: '#f3f4f6', border: '1px solid #e5e7eb',
+                borderRadius: '9px', width: '32px', height: '32px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
-                transition: 'all 0.15s',
+                cursor: 'pointer', color: '#6b7280', transition: 'all 0.15s',
               }}>
-                <X size={15} />
+                <X size={14} />
               </button>
             </div>
 
-            {/* Guest + gauge row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'clamp(16px, 3vw, 36px)', flexWrap: 'wrap' }}>
-              {/* Left: name + stats */}
-              <div style={{ flex: 1, minWidth: '220px' }}>
+            {/* Guest name + arc */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <h2 style={{
-                  margin: 0,
-                  fontSize: 'clamp(22px, 3.5vw, 34px)',
-                  fontWeight: 900,
-                  color: '#F0F5FA',
-                  letterSpacing: '-0.8px',
-                  lineHeight: 1.05,
-                  marginBottom: '4px',
+                  margin: '0 0 2px',
+                  fontSize: isMobile ? '22px' : '26px',
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  letterSpacing: '-0.6px',
+                  lineHeight: 1.1,
                 }}>
                   {guestName}
                 </h2>
                 {reservation?.guest?.email && (
-                  <p style={{
-                    margin: '0 0 clamp(14px, 2vw, 22px)',
-                    fontSize: 'clamp(11px, 1.3vw, 13px)',
-                    color: 'rgba(255,255,255,0.38)',
-                  }}>
+                  <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#9ca3af' }}>
                     {reservation.guest.email}
                   </p>
                 )}
 
-                {/* Stat row */}
+                {/* Stat cards */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(100px, auto))',
-                  gap: 'clamp(6px, 1.5vw, 12px)',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                  gap: '8px',
                 }}>
-                  <StatPill label="Total"   value={formatCurrency(summary?.totalAmount ?? 0)} color="rgba(240,245,250,0.9)" />
-                  <StatPill label="Paid"    value={formatCurrency(summary?.totalPaid ?? 0)}   color={statusColor} accent />
-                  {(summary?.totalPending ?? 0) > 0 && (
-                    <StatPill label="Pending" value={formatCurrency(summary?.totalPending ?? 0)} color="#E8B84B" />
-                  )}
-                  <StatPill
-                    label="Balance"
-                    value={summary && summary.balance <= 0 ? 'Settled ✓' : formatCurrency(summary?.balance ?? 0)}
-                    color={summary?.balance === 0 ? '#52C48A' : '#E8B84B'}
-                  />
+                  {[
+                    { label: 'Total',   value: formatCurrency(totalAmount),  color: '#374151', bg: '#f9fafb', border: '#e5e7eb' },
+                    { label: 'Paid',    value: formatCurrency(totalPaid),    color: paidColor, bg: isFullyPaid ? '#f0fdf4' : '#fffbeb', border: isFullyPaid ? '#bbf7d0' : '#fde68a' },
+                    ...(totalPending > 0 ? [{ label: 'Pending', value: formatCurrency(totalPending), color: '#d97706', bg: '#fffbeb', border: '#fde68a' }] : []),
+                    { label: 'Balance', value: balance <= 0 ? 'Settled ✓' : formatCurrency(balance), color: balance <= 0 ? '#16a34a' : '#dc2626', bg: balance <= 0 ? '#f0fdf4' : '#fef2f2', border: balance <= 0 ? '#bbf7d0' : '#fecaca' },
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      padding: '8px 14px', borderRadius: '10px',
+                      background: stat.bg, border: `1px solid ${stat.border}`,
+                    }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>
+                        {stat.label}
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: stat.color, letterSpacing: '-0.3px' }}>
+                        {stat.value}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Right: arc gauge */}
+              {/* Arc gauge */}
               {summary && (
                 <ProgressArc
                   percent={summary.percentPaid}
                   status={summary.status}
-                  size={isMobile ? 64 : 88}
+                  size={isMobile ? 60 : 76}
                 />
               )}
             </div>
 
-            {/* Booking info chips */}
+            {/* Booking chips */}
             {reservation && (
               <div style={{
                 display: 'flex', flexWrap: 'wrap', gap: '6px',
-                marginTop: 'clamp(14px, 2vw, 24px)',
-                paddingTop: 'clamp(12px, 1.5vw, 18px)',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
+                marginTop: '14px', paddingTop: '12px',
+                borderTop: '1px solid #f3f4f6',
               }}>
-                {reservation.room && <InfoChip icon={<BedDouble size={10} />} label={`Room ${reservation.room.roomNumber} · ${reservation.room.type}`} />}
-                <InfoChip icon={<CalendarCheck size={10} />} label={`${formatDate(reservation.checkIn)} → ${formatDate(reservation.checkOut)}`} />
-                <InfoChip icon={<BedDouble size={10} />} label={`${nights} night${nights !== 1 ? 's' : ''}`} />
+                {reservation.room && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', padding: '3px 10px', borderRadius: '20px' }}>
+                    <BedDouble size={10} />
+                    Room {reservation.room.roomNumber} · {reservation.room.type}
+                  </span>
+                )}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', padding: '3px 10px', borderRadius: '20px' }}>
+                  <CalendarCheck size={10} />
+                  {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', padding: '3px 10px', borderRadius: '20px' }}>
+                  <BedDouble size={10} />
+                  {nights} night{nights !== 1 ? 's' : ''}
+                </span>
                 {reservation.adults && (
-                  <InfoChip icon={<Users size={10} />} label={`${reservation.adults} adult${reservation.adults !== 1 ? 's' : ''}${reservation.children ? ` +${reservation.children} child${reservation.children !== 1 ? 'ren' : ''}` : ''}`} />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', padding: '3px 10px', borderRadius: '20px' }}>
+                    <Users size={10} />
+                    {reservation.adults} adult{reservation.adults !== 1 ? 's' : ''}{reservation.children ? ` +${reservation.children} child${reservation.children !== 1 ? 'ren' : ''}` : ''}
+                  </span>
                 )}
               </div>
             )}
           </div>
 
-          {/* ── MOBILE TABS ──────────────────────────────────────────────── */}
+          {/* ── MOBILE TABS ──────────────────────────────────────────────────── */}
           {isMobile && (
             <div style={{
               flexShrink: 0,
               display: 'flex',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
-              background: '#060D18',
+              background: '#ffffff',
+              borderBottom: '1px solid #e5e7eb',
             }}>
               {(['payments', 'summary'] as const).map(tab => {
                 const active = activeTab === tab;
                 return (
                   <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                    flex: 1, padding: '12px 8px',
+                    flex: 1, padding: '11px 8px',
                     fontSize: '12px', fontWeight: 700,
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: active ? '#52C48A' : 'rgba(255,255,255,0.35)',
-                    borderBottom: active ? '2px solid #52C48A' : '2px solid transparent',
-                    transition: 'all 0.15s', letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
+                    color: active ? '#0f172a' : '#9ca3af',
+                    borderBottom: active ? '2px solid #0f172a' : '2px solid transparent',
+                    transition: 'all 0.15s',
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
                   }}>
                     {tab === 'payments' ? `Payments (${payments.length})` : 'Summary'}
                   </button>
@@ -469,44 +479,70 @@ export default function PaymentSummaryModal({
             </div>
           )}
 
-          {/* ── BODY — two-column on large, single on small ─────────────── */}
+          {/* ── BODY ─────────────────────────────────────────────────────────── */}
           <div style={{
             flex: 1,
-            minHeight: 0,          /* critical: lets flex child shrink below content size */
+            minHeight: 0,
             display: isMobile ? 'flex' : 'grid',
             flexDirection: 'column',
-            gridTemplateColumns: 'clamp(240px, 55%, 640px) 1fr',
+            gridTemplateColumns: 'minmax(0,1fr) minmax(280px,340px)',
             overflow: 'hidden',
           }}>
 
-            {/* Left column / Payments tab */}
+            {/* LEFT — Payments list */}
             <div className="psm-scroll" style={{
               overflowY: 'auto',
               flex: isMobile ? 1 : undefined,
               minHeight: 0,
               display: isMobile && activeTab !== 'payments' ? 'none' : 'flex',
-              padding: 'clamp(14px, 2.5vw, 28px)',
-              borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
               flexDirection: 'column',
               gap: '10px',
+              padding: isMobile ? '14px' : '20px 24px',
+              background: '#f8fafc',
             }}>
-              {!isMobile && <SectionLabel count={payments.length}>Payments</SectionLabel>}
+              {/* Section header */}
+              {!isMobile && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Payments
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', background: '#f3f4f6', padding: '2px 8px', borderRadius: '20px' }}>
+                    {payments.length}
+                  </span>
+                </div>
+              )}
 
+              {/* Alert banners */}
               {pending.length > 0 && (
-                <Banner icon={<AlertTriangle size={12} />} color="#E8B84B"
-                  msg={`${pending.length} payment${pending.length !== 1 ? 's' : ''} awaiting verification`} />
+                <div style={{
+                  padding: '10px 13px', borderRadius: '10px',
+                  background: '#fffbeb', border: '1px solid #fde68a',
+                  display: 'flex', alignItems: 'center', gap: '9px',
+                }}>
+                  <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', color: '#92400e', fontWeight: 500 }}>
+                    {pending.length} payment{pending.length !== 1 ? 's' : ''} awaiting verification
+                  </span>
+                </div>
               )}
               {rejected.length > 0 && (
-                <Banner icon={<XCircle size={12} />} color="#E05B5B"
-                  msg={`${rejected.length} rejected payment${rejected.length !== 1 ? 's' : ''}`}
-                  sub={onRefund ? 'Mark as refunded below if a refund was issued.' : undefined} />
+                <div style={{
+                  padding: '10px 13px', borderRadius: '10px',
+                  background: '#fef2f2', border: '1px solid #fecaca',
+                  display: 'flex', alignItems: 'center', gap: '9px',
+                }}>
+                  <XCircle size={13} style={{ color: '#dc2626', flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', color: '#991b1b', fontWeight: 500 }}>
+                    {rejected.length} rejected payment{rejected.length !== 1 ? 's' : ''}
+                    {onRefund && ' · Mark as refunded below if a refund was issued.'}
+                  </span>
+                </div>
               )}
 
+              {/* Payment cards */}
               {sorted.map(p => (
                 <PaymentCard
-                  key={p.id} p={p} siblings={payments}
-                  onPrint={handlePrintSingle}
-                  printing={printingId === p.id}
+                  key={p.id} p={p}
                   actioningId={actioningId}
                   onVerify={onVerify} onReject={onReject}
                   onViewProof={onViewProof} onRefund={onRefund}
@@ -514,126 +550,141 @@ export default function PaymentSummaryModal({
               ))}
 
               {payments.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: 'rgba(255,255,255,0.25)', fontSize: '13px' }}>
+                <div style={{
+                  textAlign: 'center', padding: '60px 0',
+                  color: '#9ca3af', fontSize: '13px',
+                }}>
                   No payments recorded yet.
                 </div>
               )}
             </div>
 
-            {/* Right column / Summary tab */}
+            {/* RIGHT — Summary panel */}
             <div className="psm-scroll" style={{
               overflowY: 'auto',
               flex: isMobile ? 1 : undefined,
               minHeight: 0,
               display: isMobile && activeTab !== 'summary' ? 'none' : 'flex',
-              padding: 'clamp(14px, 2.5vw, 28px)',
               flexDirection: 'column',
-              gap: '16px',
-              background: 'rgba(0,0,0,0.12)',
+              gap: '14px',
+              padding: isMobile ? '14px' : '20px',
+              background: '#ffffff',
+              borderLeft: isMobile ? 'none' : '1px solid #e5e7eb',
             }}>
 
-              {/* Payment breakdown */}
+              {/* Breakdown section */}
               {summary && (
                 <div>
-                  <SectionLabel>Breakdown</SectionLabel>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
-                    <BreakdownRow label="Subtotal" value={formatCurrency(summary.totalAmount)} />
-                    <BreakdownRow label="Verified payments" value={`−${formatCurrency(summary.totalPaid)}`} valueColor="#52C48A" />
-                    {(summary.totalPending ?? 0) > 0 && (
-                      <BreakdownRow label="Pending (unverified)" value={formatCurrency(summary.totalPending)} valueColor="#E8B84B" dimmed />
-                    )}
-                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
-                    <BreakdownRow
-                      label="Balance due"
-                      value={summary.balance <= 0 ? 'Settled' : formatCurrency(summary.balance)}
-                      valueColor={summary.balance <= 0 ? '#52C48A' : '#F0F5FA'}
-                      bold
-                    />
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                    Breakdown
+                  </p>
+                  <div style={{ borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden', background: '#f9fafb' }}>
+                    {[
+                      { label: 'Subtotal', value: formatCurrency(totalAmount), color: '#374151', bold: false },
+                      { label: 'Verified payments', value: `−${formatCurrency(totalPaid)}`, color: '#16a34a', bold: false },
+                      ...(totalPending > 0 ? [{ label: 'Pending (unverified)', value: formatCurrency(totalPending), color: '#d97706', bold: false }] : []),
+                    ].map((row, i, arr) => (
+                      <div key={row.label} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '9px 12px',
+                        borderBottom: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>{row.label}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: row.color }}>{row.value}</span>
+                      </div>
+                    ))}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 12px',
+                      background: balance <= 0 ? '#f0fdf4' : '#fef2f2',
+                      borderTop: '1px solid #e5e7eb',
+                    }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#374151' }}>Balance due</span>
+                      <span style={{ fontSize: '14px', fontWeight: 800, color: balance <= 0 ? '#16a34a' : '#dc2626', letterSpacing: '-0.3px' }}>
+                        {balance <= 0 ? 'Settled ✓' : formatCurrency(balance)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Receipt section */}
               {verified.length > 0 && (
-                <div style={{
-                  padding: 'clamp(14px, 2vw, 20px)',
-                  borderRadius: '14px',
-                  background: 'rgba(82,196,138,0.04)',
-                  border: '1px solid rgba(82,196,138,0.12)',
-                }}>
-                  <SectionLabel>Print Receipt</SectionLabel>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', margin: '12px 0' }}>
-                    {(['partial', 'full'] as const).map(type => {
-                      const active = receiptType === type;
-                      const disabled = type === 'full' && !isFullyPaid;
-                      return (
-                        <button key={type} onClick={() => !disabled && setReceiptType(type)} disabled={disabled}
-                          title={disabled ? 'Only available when fully paid' : undefined}
-                          style={{
-                            padding: '9px 8px', borderRadius: '9px',
-                            fontSize: '11.5px', fontWeight: 600,
-                            cursor: disabled ? 'not-allowed' : 'pointer',
-                            background: active ? 'rgba(82,196,138,0.13)' : 'rgba(255,255,255,0.05)',
-                            color: active ? '#52C48A' : disabled ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.48)',
-                            border: active ? '1px solid rgba(82,196,138,0.35)' : '1px solid rgba(255,255,255,0.08)',
-                            opacity: disabled ? 0.38 : 1,
-                            transition: 'all 0.15s', textAlign: 'center',
-                          }}>
-                          {type === 'partial' ? '📄 Partial' : '✅ Full'}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.32)', margin: '0 0 12px', lineHeight: 1.6 }}>
-                    {receiptType === 'full'
-                      ? 'Consolidated receipt showing all payments with settled balance.'
-                      : isFullyPaid
-                        ? 'Individual receipt for a single payment.'
-                        : 'Progress receipt. Full receipt unlocks once fully paid.'}
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                    Print Receipt
                   </p>
+                  <div style={{ borderRadius: '10px', border: '1px solid #e5e7eb', padding: '14px', background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                      {(['partial', 'full'] as const).map(type => {
+                        const active = receiptType === type;
+                        const disabled = type === 'full' && !isFullyPaid;
+                        return (
+                          <button key={type} onClick={() => !disabled && setReceiptType(type)} disabled={disabled}
+                            title={disabled ? 'Only available when fully paid' : undefined}
+                            style={{
+                              padding: '9px 8px', borderRadius: '8px',
+                              fontSize: '12px', fontWeight: 600,
+                              cursor: disabled ? 'not-allowed' : 'pointer',
+                              background: active ? '#0f172a' : '#ffffff',
+                              color: active ? '#ffffff' : disabled ? '#d1d5db' : '#6b7280',
+                              border: active ? '1px solid #0f172a' : '1px solid #e5e7eb',
+                              opacity: disabled ? 0.5 : 1,
+                              transition: 'all 0.15s', textAlign: 'center',
+                            }}>
+                            {type === 'partial' ? '📄 Partial' : '✅ Full'}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <button onClick={handlePrintAll}
-                    disabled={printingAll || (receiptType === 'full' && !isFullyPaid)}
-                    style={{
-                      width: '100%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      gap: '8px', padding: '11px',
-                      borderRadius: '10px',
-                      fontSize: '12px', fontWeight: 700,
-                      background: 'rgba(82,196,138,0.12)',
-                      color: '#52C48A',
-                      border: '1px solid rgba(82,196,138,0.28)',
-                      cursor: (printingAll || (receiptType === 'full' && !isFullyPaid)) ? 'not-allowed' : 'pointer',
-                      opacity: (printingAll || (receiptType === 'full' && !isFullyPaid)) ? 0.38 : 1,
-                      transition: 'all 0.15s',
-                    }}>
-                    {printingAll
-                      ? <><Spin /> Generating…</>
-                      : <><FileDown size={14} /> Download {receiptType === 'full' ? 'Full' : 'Partial'} Receipt</>}
-                  </button>
+                    <p style={{ fontSize: '11px', color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>
+                      {receiptType === 'full'
+                        ? 'Consolidated receipt. Shows all verified payments.'
+                        : isFullyPaid
+                          ? 'Single payment receipt.'
+                          : 'Progress receipt. Full receipt available once fully paid.'}
+                    </p>
+
+                    <button onClick={handlePrintAll}
+                      disabled={printingAll || (receiptType === 'full' && !isFullyPaid)}
+                      style={{
+                        width: '100%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '7px', padding: '11px',
+                        borderRadius: '9px',
+                        fontSize: '12px', fontWeight: 700,
+                        background: '#0f172a', color: '#ffffff',
+                        border: 'none',
+                        cursor: (printingAll || (receiptType === 'full' && !isFullyPaid)) ? 'not-allowed' : 'pointer',
+                        opacity: (printingAll || (receiptType === 'full' && !isFullyPaid)) ? 0.4 : 1,
+                        transition: 'all 0.15s',
+                      }}>
+                      {printingAll
+                        ? <><Spin /> Generating…</>
+                        : <><FileDown size={14} /> Download {receiptType === 'full' ? 'Full' : 'Partial'} Receipt</>}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Verified payments summary */}
+              {/* Verified payments list */}
               {verified.length > 0 && (
                 <div>
-                  <SectionLabel>Verified ({verified.length})</SectionLabel>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                    Verified ({verified.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {verified.map(p => (
                       <div key={p.id} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '8px 11px', borderRadius: '9px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(82,196,138,0.12)',
+                        padding: '9px 12px', borderRadius: '9px',
+                        background: '#f0fdf4', border: '1px solid #bbf7d0',
                       }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)' }}>
-                            {METHOD_LABELS[p.method] ?? p.method} · {formatDate(p.createdAt!)}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#52C48A' }}>
+                        <span style={{ fontSize: '11px', color: '#374151' }}>
+                          {METHOD_LABELS[p.method] ?? p.method} · {formatDate(p.createdAt!)}
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#16a34a' }}>
                           {formatCurrency(p.amount)}
                         </span>
                       </div>
@@ -646,76 +697,5 @@ export default function PaymentSummaryModal({
         </div>
       </div>
     </>
-  );
-}
-
-// ── Small helpers ─────────────────────────────────────────────────────────────
-function StatPill({ label, value, color, accent }: { label: string; value: string; color: string; accent?: boolean }) {
-  return (
-    <div style={{
-      padding: '8px 14px', borderRadius: '10px',
-      background: accent ? `${color}10` : 'rgba(255,255,255,0.04)',
-      border: `1px solid ${accent ? color + '25' : 'rgba(255,255,255,0.07)'}`,
-    }}>
-      <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
-      <div style={{ fontSize: 'clamp(13px, 1.5vw, 15px)', fontWeight: 800, color, letterSpacing: '-0.3px' }}>{value}</div>
-    </div>
-  );
-}
-
-function InfoChip({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '5px',
-      fontSize: 'clamp(10px, 1vw, 11px)',
-      color: 'rgba(255,255,255,0.28)',
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      padding: '4px 10px', borderRadius: '20px',
-    }}>
-      {icon} {label}
-    </span>
-  );
-}
-
-function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-      <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
-        {children}
-      </span>
-      {count !== undefined && (
-        <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)' }}>
-          {count}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function BreakdownRow({ label, value, valueColor, bold, dimmed }: {
-  label: string; value: string; valueColor?: string; bold?: boolean; dimmed?: boolean;
-}) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: '7px', background: bold ? 'rgba(255,255,255,0.04)' : 'transparent' }}>
-      <span style={{ fontSize: '12px', color: dimmed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.45)', fontWeight: bold ? 600 : 400 }}>{label}</span>
-      <span style={{ fontSize: bold ? '14px' : '12px', fontWeight: bold ? 800 : 600, color: valueColor ?? 'rgba(255,255,255,0.7)', letterSpacing: '-0.2px' }}>{value}</span>
-    </div>
-  );
-}
-
-function Banner({ icon, color, msg, sub }: { icon: React.ReactNode; color: string; msg: string; sub?: string }) {
-  return (
-    <div style={{
-      padding: '10px 13px', borderRadius: '10px',
-      background: `${color}0C`, border: `1px solid ${color}22`,
-      display: 'flex', alignItems: 'flex-start', gap: '9px',
-    }}>
-      <span style={{ color, flexShrink: 0, marginTop: '1px' }}>{icon}</span>
-      <div>
-        <div style={{ fontSize: '12px', color, fontWeight: 600 }}>{msg}</div>
-        {sub && <div style={{ fontSize: '10.5px', color: `${color}85`, marginTop: '2px' }}>{sub}</div>}
-      </div>
-    </div>
   );
 }

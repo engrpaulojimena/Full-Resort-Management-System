@@ -3,8 +3,17 @@ import { db } from '@/lib/db';
 import { reservations, guests, rooms, activityLogs, payments } from '@/lib/schema';
 import { eq, desc } from 'drizzle-orm';
 import { generateConfirmationCode } from '@/lib/utils';
+import { getSessionUser } from '@/lib/session';
 
-export async function GET() {
+function requireAuth(req: NextRequest) {
+  const u = getSessionUser(req);
+  if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return u;
+}
+
+export async function GET(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const data = await db
       .select()
@@ -13,7 +22,6 @@ export async function GET() {
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
       .orderBy(desc(reservations.createdAt));
 
-    // Fetch all payments and group by reservationId
     const allPayments = await db.select().from(payments);
     const paymentsByResId: Record<number, typeof allPayments> = {};
     for (const p of allPayments) {
@@ -44,20 +52,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const {
-      guestId,
-      roomId,
-      checkIn,
-      checkOut,
-      adults,
-      children,
-      totalAmount,
-      specialRequests,
-      source,
-      guestName,
-      status = 'pending',
+      guestId, roomId, checkIn, checkOut, adults, children,
+      totalAmount, specialRequests, source, guestName, status = 'pending',
     } = body;
 
     const confirmationCode = generateConfirmationCode();
@@ -80,14 +81,10 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // A room now has an active booking against it — reflect that on the room record
-    // (unless the reservation was created as already cancelled, which shouldn't
-    // normally happen from this endpoint, but guard for safety).
     if (newReservation.roomId && status !== 'cancelled') {
       await db.update(rooms).set({ status: 'reserved', updatedAt: new Date() }).where(eq(rooms.id, newReservation.roomId));
     }
 
-    // Fetch joined data for the response
     const [joined] = await db
       .select()
       .from(reservations)
@@ -98,6 +95,7 @@ export async function POST(req: NextRequest) {
     const displayName = guestName || (joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest');
     const roomLabel = joined.rooms ? `Room ${joined.rooms.roomNumber}` : 'a room';
     await db.insert(activityLogs).values({
+      userId: auth.id,
       type: 'create',
       entity: 'reservation',
       entityId: newReservation.id,
@@ -116,6 +114,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { id, status } = body;
@@ -140,7 +140,6 @@ export async function PATCH(req: NextRequest) {
       .where(eq(reservations.id, parseInt(id)))
       .returning();
 
-    // Keep the room's status in sync with the reservation lifecycle.
     if (existing.roomId) {
       const roomStatusByReservationStatus: Record<string, 'available' | 'occupied' | 'reserved'> = {
         pending: 'reserved',
@@ -163,6 +162,7 @@ export async function PATCH(req: NextRequest) {
 
     const displayName = joined.reservations.guestName || (joined.guests ? `${joined.guests.firstName} ${joined.guests.lastName}` : 'Guest');
     await db.insert(activityLogs).values({
+      userId: auth.id,
       type: status === 'cancelled' ? 'cancel' : 'update',
       entity: 'reservation',
       entityId: updated.id,

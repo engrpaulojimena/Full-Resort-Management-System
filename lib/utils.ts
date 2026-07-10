@@ -2,11 +2,11 @@ import { ActivityType } from '@/types';
 
 export function formatCurrency(amount: string | number): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
+  const formatted = new Intl.NumberFormat('en-PH', {
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(num);
+  return `₱${formatted}`;
 }
 
 export function formatDate(date: Date | string): string {

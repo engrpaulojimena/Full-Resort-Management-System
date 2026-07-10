@@ -1,69 +1,39 @@
 import { Payment, Reservation } from '@/types';
 import { formatDate, formatDateTime, calculateNights } from './utils';
 
-// ─── Safe currency: jsPDF Helvetica has no ₱ glyph → use "PHP" prefix ──────
 function php(amount: string | number): string {
   const n = typeof amount === 'string' ? parseFloat(amount) : amount;
   return 'PHP ' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ─── Colour palette — matched to Kekamiya Beach Resort logo ─────────────────
 type RGB = [number, number, number];
-const NAVY:   RGB = [0,   40,  100];
-const TEAL:   RGB = [0,   160, 160];
-const GREEN:  RGB = [0,   110, 50];
-const AMBER:  RGB = [220, 140, 0];
-const CREAM:  RGB = [248, 251, 252];
-const MID:    RGB = [100, 115, 130];
-const DARK:   RGB = [20,  35,  55];
-const WHITE:  RGB = [255, 255, 255];
-const SILVER: RGB = [160, 170, 180];
-const PURPLE: RGB = [110, 70,  190];
-const RED:    RGB = [200, 55,  55];
-const ORANGE: RGB = [230, 90,  0];
+
+// ── Design Tokens (clean, white, navy/blue accent — matches reference) ───────
+const NAVY:        RGB = [17,  49,  103];  // headings / brand text
+const NAVY_DEEP:   RGB = [10,  30,  70];   // table header bg
+const TEAL:        RGB = [0,   120, 150];  // section labels / links
+const GREEN:       RGB = [20,  115, 55];   // paid
+const GREEN_LIGHT: RGB = [228, 248, 234];
+const AMBER:       RGB = [178, 98,  0];    // partial / pending
+const AMBER_LIGHT: RGB = [255, 244, 214];
+const PURPLE:      RGB = [100, 30,  200];  // refund / overpaid
+const PURPLE_LIGHT: RGB = [240, 232, 255];
+const WHITE:       RGB = [255, 255, 255];
+const BODY_TEXT:   RGB = [30,  36,  50];
+const MUTED:       RGB = [110, 118, 135];
+const LIGHT_RULE:  RGB = [222, 228, 238];
+const ROW_ALT:     RGB = [246, 249, 253];
+const TOTAL_BG:    RGB = [232, 240, 250];
 
 type Doc = InstanceType<typeof import('jspdf')['jsPDF']>;
-
 const C = {
   text: (d: Doc, rgb: RGB) => d.setTextColor(...rgb),
   fill: (d: Doc, rgb: RGB) => d.setFillColor(...rgb),
   draw: (d: Doc, rgb: RGB) => d.setDrawColor(...rgb),
 };
 
-function box(d: Doc, x: number, y: number, w: number, h: number, fill: RGB) {
-  C.fill(d, fill); d.rect(x, y, w, h, 'F');
-}
-
-function line(d: Doc, y: number, x1: number, x2: number, color: RGB = TEAL, lw = 0.35) {
+function hRule(d: Doc, y: number, x1: number, x2: number, color: RGB = LIGHT_RULE, lw = 0.25) {
   C.draw(d, color); d.setLineWidth(lw); d.line(x1, y, x2, y);
-}
-
-function label(d: Doc, y: number, text: string, x = 22) {
-  d.setFontSize(7.5); d.setFont('helvetica', 'bold'); C.text(d, TEAL);
-  d.text(text.toUpperCase(), x, y);
-}
-
-function kv(d: Doc, y: number, key: string, val: string, bold = false, vc: RGB = DARK) {
-  d.setFontSize(8.8); d.setFont('helvetica', 'normal'); C.text(d, MID);
-  d.text(key, 24, y);
-  d.setFont('helvetica', bold ? 'bold' : 'normal'); C.text(d, vc);
-  d.text(val, 112, y);
-  return y + 6.2;
-}
-
-function pill(d: Doc, text: string, x: number, y: number, color: RGB) {
-  const W = 34, H = 8;
-  C.fill(d, color); C.draw(d, color);
-  d.roundedRect(x, y, W, H, 2, 2, 'F');
-  d.setFontSize(6.5); d.setFont('helvetica', 'bold'); C.text(d, WHITE);
-  d.text(text, x + W / 2, y + 5.5, { align: 'center' });
-}
-
-function stampPaid(d: Doc, cx: number, cy: number) {
-  C.draw(d, GREEN); d.setLineWidth(1.8);
-  d.roundedRect(cx - 24, cy - 8, 48, 16, 3, 3);
-  d.setFontSize(18); d.setFont('helvetica', 'bold'); C.text(d, GREEN);
-  d.text('PAID', cx, cy + 6, { align: 'center' });
 }
 
 async function loadLogoBase64(): Promise<string | null> {
@@ -77,16 +47,12 @@ async function loadLogoBase64(): Promise<string | null> {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ─── Shared receipt drawing logic ────────────────────────────────────────────
 interface DrawOptions {
   payment: Payment;
   reservation?: Reservation;
-  /** All verified payments for this reservation (used to compute running totals) */
   siblingPayments?: Payment[];
   logoB64?: string | null;
 }
@@ -94,244 +60,283 @@ interface DrawOptions {
 function drawReceipt(doc: Doc, opts: DrawOptions): void {
   const { payment, reservation, siblingPayments = [], logoB64 } = opts;
 
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const LM = 18, RM = W - 18;
+  const W  = doc.internal.pageSize.getWidth();
+  const H  = doc.internal.pageSize.getHeight();
+  const LM = 16, RM = W - 16, CW = RM - LM;
+  const CX = W / 2;
 
-  const resort = process.env.NEXT_PUBLIC_RESORT_NAME || process.env.RESORT_NAME || 'Kekamiya Beach Resort';
+  const resort   = process.env.NEXT_PUBLIC_RESORT_NAME    || process.env.RESORT_NAME    || 'Kekamiya Beach Resort';
+  const address  = process.env.NEXT_PUBLIC_RESORT_ADDRESS || process.env.RESORT_ADDRESS || '';
+  const phone    = process.env.NEXT_PUBLIC_RESORT_PHONE   || process.env.RESORT_PHONE   || '';
+  const email    = process.env.NEXT_PUBLIC_RESORT_EMAIL   || process.env.RESORT_EMAIL   || '';
+  const website  = process.env.NEXT_PUBLIC_RESORT_WEBSITE || process.env.RESORT_WEBSITE || '';
 
-  const nights     = reservation ? calculateNights(reservation.checkIn, reservation.checkOut) : 0;
-  const thisPaid   = parseFloat(String(payment.amount));
-  const total      = reservation ? parseFloat(String(reservation.totalAmount)) : thisPaid;
-  const isVerified = payment.status === 'verified';
+  const nights = reservation ? calculateNights(reservation.checkIn, reservation.checkOut) : 0;
+  const total  = reservation ? parseFloat(String(reservation.totalAmount)) : parseFloat(String(payment.amount));
 
-  // All verified payments for this reservation EXCLUDING this payment (previous ones)
-  const prevPayments = siblingPayments.filter(
-    p => p.id !== payment.id && p.status === 'verified'
+  const allPayments = [payment, ...siblingPayments].filter(
+    (p, i, arr) => arr.findIndex(x => x.id === p.id) === i
   );
-  const prevPaid    = prevPayments.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
-  const totalPaid   = prevPaid + (isVerified ? thisPaid : 0);
+
+  const allVerified = allPayments.filter(p => p.status === 'verified');
+  const totalPaid   = allVerified.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
   const balance     = total - totalPaid;
+  const isFullyPaid = balance <= 0;
+  const isOverpaid  = balance < 0;
 
-  // ── A. Full-bleed dark header (68mm) ──────────────────────────────────────
-  box(doc, 0, 0, W, 68, NAVY);
-  box(doc, 0, 0, W, 2, TEAL);
+  const refundedPayments = allPayments.filter(p => p.status === 'refunded');
+  const totalRefunded    = refundedPayments.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
 
+  const historyPayments = allPayments
+    .filter(p => p.status === 'verified' || p.status === 'refunded')
+    .sort((a, b) => {
+      const da = new Date(a.verifiedAt ?? a.createdAt ?? 0).getTime();
+      const db = new Date(b.verifiedAt ?? b.createdAt ?? 0).getTime();
+      return da - db;
+    });
+
+  // ── Page background ────────────────────────────────────────────────────────
+  C.fill(doc, WHITE); doc.rect(0, 0, W, H, 'F');
+
+  let y = 15;
+
+  // ── A. Header — small icon badge + resort name, centered ──────────────────
+  const BADGE_R = 6.5;
   if (logoB64) {
-    try { doc.addImage(logoB64, 'PNG', LM, 10, 20, 20); } catch { /* skip */ }
+    try {
+      // just the logo image itself, no circle/border behind it
+      doc.addImage(logoB64, 'PNG', CX - BADGE_R, y - 1, BADGE_R * 2, BADGE_R * 2);
+    } catch { /* skip */ }
+  } else {
+    // fallback only when no logo is available: initial letter in a plain navy circle
+    C.fill(doc, NAVY); doc.circle(CX, y + BADGE_R - 1, BADGE_R, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
+    doc.text(resort.charAt(0).toUpperCase(), CX, y + BADGE_R + 1.3, { align: 'center' });
+  }
+  y += BADGE_R * 2 + 4;
+
+  doc.setFontSize(19); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
+  doc.text(resort, CX, y, { align: 'center' });
+  y += 6.5;
+
+  // Contact row — address · phone · email
+  const contactParts = [
+    address ? address : null,
+    phone   ? phone   : null,
+    email   ? email   : null,
+  ].filter(Boolean) as string[];
+
+  if (contactParts.length) {
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+    const line = contactParts.join('     ·     ');
+    doc.text(line, CX, y, { align: 'center' });
+    y += 4.5;
+  }
+  if (website) {
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); C.text(doc, TEAL);
+    doc.text(website, CX, y, { align: 'center' });
+    y += 4.5;
   }
 
-  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
-  doc.text(resort, W / 2 + 6, 22, { align: 'center' });
+  y += 3;
+  hRule(doc, y, LM, RM, LIGHT_RULE, 0.4);
+  y += 9;
 
-  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); C.text(doc, TEAL);
-  doc.text('O F F I C I A L   P A Y M E N T   R E C E I P T', W / 2 + 6, 30, { align: 'center' });
-
-  line(doc, 35, LM + 18, RM - 2, TEAL, 0.25);
-
-  doc.setFontSize(7.2); C.text(doc, SILVER);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Receipt No.  ${String(payment.id).padStart(6, '0')}`, LM, 48);
-  doc.text(`Issued  ${formatDateTime(new Date())}`, LM, 55);
-
-  const statusText  = (payment.status || 'pending').toUpperCase();
-  const statusColor: RGB =
-    payment.status === 'verified' ? GREEN :
-    payment.status === 'refunded' ? PURPLE :
-    payment.status === 'rejected' ? RED : AMBER;
-  pill(doc, statusText, RM - 34, 46, statusColor);
-
-  box(doc, 0, 66, W, 2, TEAL);
-
-  const dmX = W / 2, dmY = 68;
-  box(doc, dmX - 8,   dmY - 1.2, 2.4, 2.4, TEAL);
-  box(doc, dmX - 1.2, dmY - 1.2, 2.4, 2.4, AMBER);
-  box(doc, dmX + 5.6, dmY - 1.2, 2.4, 2.4, TEAL);
-
-  // ── B. Payment details ────────────────────────────────────────────────────
-  let y = 80;
-
-  label(doc, y, 'Payment Details');
-  y += 6;
-
-  y = kv(doc, y, 'Payment ID',    `#${payment.id}`);
-  y = kv(doc, y, 'Reference No.', payment.referenceNumber || '—');
-  y = kv(doc, y, 'Method',
-    (payment.method || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
-  y = kv(doc, y, 'Type',
-    (payment.paymentType || 'full').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
-  if (payment.verifiedAt)
-    y = kv(doc, y, 'Verified At', formatDateTime(payment.verifiedAt));
-  if (payment.notes)
-    y = kv(doc, y, 'Notes', payment.notes);
-
-  y += 4;
-  line(doc, y, LM, RM);
-  box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, TEAL);
-  y += 8;
-
-  // ── C. Reservation details ────────────────────────────────────────────────
-  if (reservation) {
-    label(doc, y, 'Reservation Details');
-    y += 6;
-
-    y = kv(doc, y, 'Confirmation Code', reservation.confirmationCode, true);
-
-    if (reservation.guest) {
-      const name = `${reservation.guest.firstName} ${reservation.guest.lastName}`;
-      y = kv(doc, y, 'Guest', name, true);
-      if (reservation.guest.email) y = kv(doc, y, 'Email', reservation.guest.email);
-      if (reservation.guest.phone) y = kv(doc, y, 'Phone', reservation.guest.phone);
-    }
-
-    if (reservation.room) {
-      const roomLabel = `Room ${reservation.room.roomNumber}  ·  ${reservation.room.type.charAt(0).toUpperCase() + reservation.room.type.slice(1)}`;
-      y = kv(doc, y, 'Accommodation', roomLabel);
-      y = kv(doc, y, 'Rate / Night', php(reservation.room.pricePerNight));
-    }
-
-    y = kv(doc, y, 'Check-in',  formatDate(reservation.checkIn));
-    y = kv(doc, y, 'Check-out', formatDate(reservation.checkOut));
-    y = kv(doc, y, 'Duration',  `${nights} night${nights !== 1 ? 's' : ''}`);
-
-    if (reservation.adults) {
-      const g = `${reservation.adults} adult${reservation.adults !== 1 ? 's' : ''}` +
-        (reservation.children ? ` + ${reservation.children} child${reservation.children !== 1 ? 'ren' : ''}` : '');
-      y = kv(doc, y, 'Guests', g);
-    }
-
-    y += 4;
-    line(doc, y, LM, RM);
-    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, AMBER);
-    y += 8;
-  }
-
-  // ── D. Payment History (previous payments for this reservation) ───────────
-  if (prevPayments.length > 0) {
-    label(doc, y, 'Payment History');
-    y += 6;
-
-    for (const p of prevPayments) {
-      const date = p.verifiedAt ? formatDate(new Date(p.verifiedAt)) : (p.createdAt ? formatDate(new Date(p.createdAt)) : '—');
-      const typeLabel = (p.paymentType || 'payment').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      doc.setFontSize(8.2); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-      doc.text(`#${p.id}  ·  ${typeLabel}  ·  ${date}`, 24, y);
-      doc.setFont('helvetica', 'normal'); C.text(doc, DARK);
-      doc.text(php(p.amount), RM - 4, y, { align: 'right' });
-      y += 5.8;
-    }
-
-    // Subtotal of previous payments
-    y += 1;
-    line(doc, y, LM + 4, RM - 4, SILVER, 0.2);
-    y += 5;
-    doc.setFontSize(8.2); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-    doc.text('Previous Payments Subtotal', 24, y);
-    doc.setFont('helvetica', 'bold'); C.text(doc, DARK);
-    doc.text(php(prevPaid), RM - 4, y, { align: 'right' });
-    y += 8;
-
-    line(doc, y, LM, RM);
-    box(doc, W / 2 - 1.2, y - 1.2, 2.4, 2.4, TEAL);
-    y += 8;
-  }
-
-  // ── E. Payment Summary box ────────────────────────────────────────────────
-  label(doc, y, 'Payment Summary');
-  y += 5;
-
-  // Rows: Total Reservation, Previous Paid (if any), This Payment, Remaining Balance (if any)
-  const summaryRows = 2 + (prevPayments.length > 0 ? 1 : 0) + (balance !== 0 ? 1 : 0);
-  const rowH  = 8;
-  const boxH  = summaryRows * rowH + 28;
-  const boxY  = y;
-
-  box(doc, LM, boxY, W - 36, boxH, CREAM);
-  C.draw(doc, TEAL as RGB); doc.setLineWidth(0.3);
-  doc.rect(LM, boxY, W - 36, boxH);
-  box(doc, LM, boxY, 2.5, boxH, NAVY);
-
-  y = boxY + 8;
-
-  // Total Reservation
-  doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-  doc.text('Total Reservation', LM + 8, y);
-  doc.setFont('helvetica', 'normal'); C.text(doc, DARK);
-  doc.text(php(total), RM - 4, y, { align: 'right' });
-  y += rowH;
-
-  // Previous payments subtotal (only if there are any)
-  if (prevPayments.length > 0) {
-    doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-    doc.text('Previously Paid', LM + 8, y);
-    doc.setFont('helvetica', 'normal'); C.text(doc, DARK);
-    doc.text(`− ${php(prevPaid)}`, RM - 4, y, { align: 'right' });
-    y += rowH;
-  }
-
-  // This payment
-  doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-  doc.text('This Payment', LM + 8, y);
-  doc.setFont('helvetica', 'bold'); C.text(doc, isVerified ? GREEN : DARK);
-  doc.text(php(thisPaid), RM - 4, y, { align: 'right' });
-  y += rowH;
-
-  // Remaining balance
-  if (balance !== 0) {
-    const balLabel = balance > 0 ? 'Remaining Balance' : 'Overpayment';
-    const balColor: RGB = balance > 0 ? AMBER : ORANGE;
-    doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-    doc.text(balLabel, LM + 8, y);
-    doc.setFont('helvetica', 'bold'); C.text(doc, balColor);
-    doc.text(php(Math.abs(balance)), RM - 4, y, { align: 'right' });
-    y += rowH;
-  }
-
-  y += 2;
-  line(doc, y, LM + 4, RM - 4, TEAL, 0.3);
-  y += 7;
-
-  // Big amount
-  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
-  doc.text(php(thisPaid), RM - 4, y, { align: 'right' });
+  // ── B. Paid By  /  RECEIPT ─────────────────────────────────────────────────
+  const guestName  = reservation?.guest ? `${reservation.guest.firstName} ${reservation.guest.lastName}` : '—';
+  const guestEmail = reservation?.guest?.email || '';
+  const receiptRef = reservation?.confirmationCode || `PAY-${payment.id}`;
 
   doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, TEAL);
-  doc.text('AMOUNT PAID THIS RECEIPT', LM + 8, y);
+  doc.text('PAID BY', LM, y);
 
-  if (isVerified && balance <= 0) {
-    stampPaid(doc, LM + 60, y - 5);
+  doc.setFontSize(15.5); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
+  doc.text('RECEIPT', RM, y, { align: 'right' });
+
+  y += 5.5;
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); C.text(doc, BODY_TEXT);
+  doc.text(guestName, LM, y);
+  y += 4.5;
+  if (guestEmail) {
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+    doc.text(guestEmail, LM, y);
   }
 
-  y = boxY + boxH + 12;
+  y += 9;
 
-  // ── F. Double rule ornament ───────────────────────────────────────────────
-  line(doc, y,     LM, RM, NAVY, 0.8);
-  line(doc, y + 2, LM, RM, TEAL, 0.2);
+  // ── C. Booking Details grid ────────────────────────────────────────────────
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); C.text(doc, TEAL);
+  doc.text('BOOKING DETAILS', LM, y);
+  y += 6;
+
+  const gLabelX = LM, gValX = LM + 26;
+  const gLabelX2 = LM + CW * 0.55, gValX2 = LM + CW * 0.55 + 26;
+  const rowGap = 6;
+
+  function gridRow(label: string, val: string, ly: number, labelX: number, valX: number) {
+    doc.setFontSize(7.3); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+    doc.text(label, labelX, ly);
+    doc.setFontSize(7.6); doc.setFont('helvetica', 'bold'); C.text(doc, BODY_TEXT);
+    doc.text(val || '—', valX, ly);
+  }
+
+  if (reservation) {
+    gridRow('Check in',  formatDate(reservation.checkIn),  y, gLabelX, gValX);
+    y += rowGap;
+    gridRow('Check-out', formatDate(reservation.checkOut), y, gLabelX, gValX);
+
+    const guestsStr = reservation.adults
+      ? `${reservation.adults} adult${reservation.adults !== 1 ? 's' : ''}` +
+        (reservation.children ? `, ${reservation.children} child${reservation.children !== 1 ? 'ren' : ''}` : '')
+      : '—';
+    gridRow('Receipt #', receiptRef, y, gLabelX2, gValX2);
+    y += rowGap;
+    gridRow('Guests', guestsStr, y, gLabelX, gValX);
+    gridRow('Receipt Date', formatDate(new Date()), y, gLabelX2, gValX2);
+    y += rowGap;
+    if (reservation.room) {
+      gridRow('Unit', `Room ${reservation.room.roomNumber} · ${reservation.room.type.charAt(0).toUpperCase() + reservation.room.type.slice(1)}`, y, gLabelX, gValX);
+    }
+  } else {
+    gridRow('Receipt #', receiptRef, y, gLabelX2, gValX2);
+    y += rowGap;
+    gridRow('Receipt Date', formatDate(new Date()), y, gLabelX2, gValX2);
+  }
+
+  y += rowGap + 4;
+  hRule(doc, y, LM, RM, LIGHT_RULE, 0.3);
+  y += 8;
+
+  // ── D. Payment history table ───────────────────────────────────────────────
+  const col1 = LM + 4;            // ref / type
+  const col2 = LM + CW * 0.42;    // method
+  const col3 = LM + CW * 0.62;    // date
+  const headH = 8;
+  const tableTop = y;
+
+  C.fill(doc, NAVY_DEEP); doc.rect(LM, y, CW, headH, 'F');
+  doc.setFontSize(6.6); doc.setFont('helvetica', 'bold'); C.text(doc, WHITE);
+  doc.text('REF / TYPE', col1, y + 5.3);
+  doc.text('METHOD',     col2, y + 5.3);
+  doc.text('DATE',       col3, y + 5.3);
+  doc.text('AMOUNT',     RM - 3, y + 5.3, { align: 'right' });
+  y += headH;
+
+  const rowH = 7.5;
+  historyPayments.forEach((p, i) => {
+    if (i % 2 !== 0) { C.fill(doc, ROW_ALT); doc.rect(LM, y, CW, rowH, 'F'); }
+
+    const date = p.verifiedAt
+      ? formatDate(new Date(p.verifiedAt))
+      : (p.createdAt ? formatDate(new Date(p.createdAt)) : '—');
+    const typeLabel   = (p.paymentType || 'payment').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const methodLabel = (p.method || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const isRefund    = p.status === 'refunded';
+    const amtColor: RGB = isRefund ? PURPLE : BODY_TEXT;
+
+    doc.setFontSize(7.3); doc.setFont('helvetica', 'normal'); C.text(doc, BODY_TEXT);
+    doc.text(`#${p.id} · ${typeLabel}`, col1, y + 5);
+    C.text(doc, MUTED);
+    doc.text(methodLabel, col2, y + 5);
+    doc.text(date, col3, y + 5);
+    doc.setFont('helvetica', 'bold'); C.text(doc, amtColor);
+    doc.text((isRefund ? '− ' : '') + php(p.amount), RM - 3, y + 5, { align: 'right' });
+
+    hRule(doc, y + rowH, LM, RM, LIGHT_RULE, 0.2);
+    y += rowH;
+  });
+
+  C.draw(doc, LIGHT_RULE); doc.setLineWidth(0.3);
+  doc.rect(LM, tableTop, CW, y - tableTop, 'D');
+
+  y += 6;
+
+  // ── E. Totals ───────────────────────────────────────────────────────────────
+  const totLabelX = LM + CW * 0.55;
+  function totRow(lbl: string, val: string, vc: RGB = BODY_TEXT, bold = false) {
+    doc.setFontSize(7.3); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+    doc.text(lbl, totLabelX, y, { align: 'left' });
+    doc.setFontSize(7.6); doc.setFont('helvetica', bold ? 'bold' : 'normal'); C.text(doc, vc);
+    doc.text(val, RM - 3, y, { align: 'right' });
+    y += 6;
+  }
+
+  totRow('Reservation Amount', php(total));
+  totRow('Total Paid', php(totalPaid), GREEN, true);
+  if (totalRefunded > 0) totRow('Total Refunded', `− ${php(totalRefunded)}`, PURPLE, true);
+
+  y += 3;
+
+  // Highlighted Total bar (status-colored, like the reference's blue Total row)
+  const heroStatus = isOverpaid ? 'OVERPAID' : isFullyPaid ? 'TOTAL PAID' : 'BALANCE DUE';
+  const heroVal     = isOverpaid ? Math.abs(balance) : isFullyPaid ? totalPaid : balance;
+  const heroColor: RGB = isFullyPaid && !isOverpaid ? GREEN : isOverpaid ? PURPLE : AMBER;
+  const heroBg: RGB    = isFullyPaid && !isOverpaid ? GREEN_LIGHT : isOverpaid ? PURPLE_LIGHT : AMBER_LIGHT;
+
+  const barH = 11;
+  C.fill(doc, TOTAL_BG); doc.rect(LM, y - 7, CW, barH, 'F');
+  C.fill(doc, NAVY); doc.rect(LM, y - 7, 2.2, barH, 'F');
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
+  doc.text('TOTAL', LM + 6, y);
+  doc.setFontSize(10); C.text(doc, NAVY);
+  doc.text(php(total), RM - 4, y, { align: 'right' });
+  y += barH - 1;
+
+  // small status chip beneath the total bar
+  y += 4;
+  const chipLabel = `${heroStatus} · ${php(heroVal)}`;
+  doc.setFontSize(6.6); doc.setFont('helvetica', 'bold');
+  const chipW = doc.getTextWidth(chipLabel) + 12;
+  const chipX = RM - chipW;
+  C.fill(doc, heroBg);
+  doc.roundedRect(chipX, y, chipW, 6.5, 1.4, 1.4, 'F');
+  C.text(doc, heroColor);
+  doc.text(chipLabel, chipX + chipW / 2, y + 4.3, { align: 'center' });
+
   y += 14;
 
-  // ── G. Fine print / thank-you ─────────────────────────────────────────────
-  doc.setFontSize(8.5); doc.setFont('helvetica', 'italic'); C.text(doc, DARK);
-  doc.text(`Thank you for choosing ${resort}.`, W / 2, y, { align: 'center' });
+  // ── F. Notes ────────────────────────────────────────────────────────────────
+  if (y + 20 > H - 30) { doc.addPage(); C.fill(doc, WHITE); doc.rect(0, 0, W, H, 'F'); y = 20; }
+
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); C.text(doc, NAVY);
+  doc.text('Notes', LM, y);
+  y += 5;
+  doc.setFontSize(7.3); doc.setFont('helvetica', 'normal'); C.text(doc, BODY_TEXT);
+  doc.text(`Thank you for staying with us. We look forward to your next visit :)`, LM, y);
+  y += 9;
+
+  hRule(doc, y, LM, RM, LIGHT_RULE, 0.3);
   y += 6;
-  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); C.text(doc, MID);
-  doc.text('This is an official receipt. Please retain a copy for your records.', W / 2, y, { align: 'center' });
 
-  // ── H. Footer ─────────────────────────────────────────────────────────────
-  const FY = H - 22;
-  box(doc, 0, FY, W, H - FY, NAVY);
-  box(doc, 0, FY, W, 1.2, TEAL);
+  // ── G. Payment Terms & Conditions (small print) ───────────────────────────
+  if (y + 26 > H - 14) { doc.addPage(); C.fill(doc, WHITE); doc.rect(0, 0, W, H, 'F'); y = 20; }
 
-  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); C.text(doc, SILVER);
-  doc.text(`Generated on ${formatDateTime(new Date())}   ·   ${resort}`, W / 2, FY + 9, { align: 'center' });
-  doc.text('For inquiries, please present this receipt together with your booking confirmation.', W / 2, FY + 15, { align: 'center' });
+  doc.setFontSize(6.4); doc.setFont('helvetica', 'bold'); C.text(doc, MUTED);
+  doc.text('PAYMENT TERMS & CONDITIONS', LM, y);
+  y += 4;
+
+  const terms = [
+    `Payment is considered confirmed only upon verification by ${resort}.`,
+    'This receipt serves as valid proof of payment and must be presented together with your booking confirmation.',
+    'Refunds, if applicable, are processed in accordance with the resort\u2019s cancellation and refund policy.',
+    'Rates reflected are inclusive of applicable taxes and service charges unless otherwise stated.',
+  ];
+
+  doc.setFontSize(5.8); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+  terms.forEach(t => {
+    const lines = doc.splitTextToSize(`•  ${t}`, CW - 4);
+    doc.text(lines, LM, y);
+    y += lines.length * 3;
+  });
+
+  // ── H. Footer ───────────────────────────────────────────────────────────────
+  const FY = H - 10;
+  hRule(doc, FY - 4, LM, RM, LIGHT_RULE, 0.25);
+  doc.setFontSize(6); doc.setFont('helvetica', 'normal'); C.text(doc, MUTED);
+  doc.text(`Generated ${formatDateTime(new Date())}`, LM, FY);
+  doc.text(resort, RM, FY, { align: 'right' });
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-/**
- * Browser: downloads the PDF.
- * Pass siblingPayments = all payments for the same reservation so the
- * receipt can show correct "previously paid" and remaining balance.
- */
 export async function generateReceiptPDF(
   payment: Payment,
   reservation?: Reservation,
@@ -340,17 +345,11 @@ export async function generateReceiptPDF(
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const logoB64 = await loadLogoBase64();
-
   drawReceipt(doc, { payment, reservation, siblingPayments, logoB64 });
-
   const code = reservation?.confirmationCode || `PAY${payment.id}`;
-  doc.save(`receipt-${code}-${payment.id}.pdf`);
+  doc.save(`receipt-${code}.pdf`);
 }
 
-/**
- * Server-side: returns a Buffer (for email attachments).
- * Pass siblingPayments = all payments for the same reservation.
- */
 export async function generateReceiptBuffer(
   payment: Payment,
   reservation?: Reservation,
@@ -358,13 +357,8 @@ export async function generateReceiptBuffer(
 ): Promise<{ buffer: Buffer; filename: string }> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-
   drawReceipt(doc, { payment, reservation, siblingPayments });
-
   const code = reservation?.confirmationCode || `PAY${payment.id}`;
   const arrayBuffer = doc.output('arraybuffer');
-  return {
-    buffer: Buffer.from(arrayBuffer),
-    filename: `receipt-${code}-${payment.id}.pdf`,
-  };
+  return { buffer: Buffer.from(arrayBuffer), filename: `receipt-${code}.pdf` };
 }

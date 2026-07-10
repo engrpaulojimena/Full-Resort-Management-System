@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BedDouble, CalendarCheck, CreditCard, Users, TrendingUp, LogIn, LogOut, Loader2, AlertTriangle } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
+import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { formatCurrency, formatDate, formatDateTime, activityIcon } from '@/lib/utils';
 import { getReservationPaymentSummary } from '@/lib/payments';
@@ -155,13 +156,7 @@ export default function DashboardPage() {
       .sort((a, b) => b.overstayHours - a.overstayHours); // overstayers first
   }, [reservations, payments]);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px' }}>
-        <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--text-muted)' }} />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -355,7 +350,7 @@ export default function DashboardPage() {
                 {recentReservations.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{r.confirmationCode}</td>
-                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.guest?.firstName} {r.guest?.lastName}</td>
+                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.guestName || `${r.guest?.firstName ?? ''} ${r.guest?.lastName ?? ''}`.trim()}</td>
                     <td>Room {r.room?.roomNumber}</td>
                     <td>{formatDate(r.checkIn)}</td>
                     <td><StatusBadge status={r.status} /></td>
@@ -444,7 +439,7 @@ export default function DashboardPage() {
                     <tr key={r.id} style={{ background: isOverstaying ? 'rgba(239,83,80,0.04)' : undefined }}>
                       <td>
                         <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>
-                          {r.guest?.firstName} {r.guest?.lastName}
+                          {r.guestName || `${r.guest?.firstName ?? ''} ${r.guest?.lastName ?? ''}`.trim()}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.guest?.email}</div>
                       </td>

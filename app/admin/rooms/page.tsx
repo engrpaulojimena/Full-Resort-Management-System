@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, BedDouble, Users, Crown, Home, TreePine, Sparkles } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import RoomModal, { ModalMode } from '@/components/rooms/AddRoomModal';
+import { RoomsSkeleton } from '@/components/ui/Skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { Room, RoomType } from '@/types';
 
@@ -29,6 +30,7 @@ const STATUS_FILTERS = [
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -38,10 +40,12 @@ export default function RoomsPage() {
   const [activeRoom, setActiveRoom] = useState<Room | undefined>();
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/rooms')
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setRooms(data); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   function openAdd() {
@@ -77,6 +81,8 @@ export default function RoomsPage() {
     const matchStatus = statusFilter === 'all' || room.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  if (loading) return <RoomsSkeleton />;
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

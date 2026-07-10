@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { guests } from '@/lib/schema';
 import { ilike, or } from 'drizzle-orm';
+import { getSessionUser } from '@/lib/session';
+
+function requireAuth(req: NextRequest) {
+  const u = getSessionUser(req);
+  if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return u;
+}
 
 export async function GET(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
@@ -34,6 +43,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { firstName, lastName, email, phone, address, idType, idNumber, nationality, notes } = body;

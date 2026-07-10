@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUser } from '@/lib/session';
 import { sendEmail } from '@/lib/email';
 import {
   reservationConfirmationEmail,
@@ -46,6 +47,8 @@ async function logEmail({
 }
 
 export async function POST(req: NextRequest) {
+  const u = getSessionUser(req);
+  if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const body = await req.json();
     const { event, to, reservation, payment, payments } = body as {

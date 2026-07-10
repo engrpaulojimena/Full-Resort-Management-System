@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rooms } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
+import { getSessionUser } from '@/lib/session';
 
-export async function GET() {
+function requireAuth(req: NextRequest) {
+  const u = getSessionUser(req);
+  if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return u;
+}
+
+export async function GET(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const data = await db.select().from(rooms).orderBy(rooms.roomNumber);
     return NextResponse.json(data);
@@ -14,6 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { roomNumber, type, status, floor, capacity, pricePerNight, description, amenities, images } = body;
@@ -45,6 +56,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { id, roomNumber, type, status, floor, capacity, pricePerNight, description, amenities, images } = body;

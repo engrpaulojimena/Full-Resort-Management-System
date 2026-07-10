@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2 } from 'lucide-react';
 import { getInitials, formatDate } from '@/lib/utils';
 import { Guest, Reservation } from '@/types';
+import { GuestsSkeleton } from '@/components/ui/Skeleton';
 
 const AVATAR_COLORS = ['#6FA39A', '#A79BC9', '#7FAE93', '#D2A24C', '#CFA0B5', '#8CB9CE'];
 
@@ -142,6 +143,8 @@ export default function GuestsPage() {
     boxSizing: 'border-box' as const,
   });
 
+  if (loading) return <GuestsSkeleton />;
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Stats */}
@@ -184,16 +187,8 @@ export default function GuestsPage() {
         </button>
       </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-          <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite' }} />
-        </div>
-      )}
-
       {/* Guest cards */}
-      {!loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
           {filtered.map((guest, i) => {
             const activeReservation = activeReservationByGuest.get(guest.id);
             return (
@@ -271,9 +266,8 @@ export default function GuestsPage() {
             );
           })}
         </div>
-      )}
 
-      {!loading && filtered.length === 0 && (
+      {filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
           <Users size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
           <p>{search ? 'No guests found matching your search.' : 'No guests yet. Add your first guest!'}</p>

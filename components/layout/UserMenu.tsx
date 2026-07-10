@@ -3,10 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Settings, User, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getInitials } from '@/lib/utils';
+
+const AVATAR_COLORS = ['#6FA39A', '#A79BC9', '#7FAE93', '#D2A24C', '#CFA0B5'];
 
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -16,6 +23,9 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
+  const initials = user ? getInitials(user.firstName, user.lastName) : '?';
+  const avatarColor = AVATAR_COLORS[(user?.id ?? 0) % AVATAR_COLORS.length];
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
@@ -24,10 +34,10 @@ export default function UserMenu() {
       >
         <div style={{
           width: '30px', height: '30px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6FA39A, #D2A24C)',
+          background: avatarColor,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '11px', fontWeight: 600, color: 'white', flexShrink: 0,
-        }}>A</div>
+        }}>{initials}</div>
         <ChevronDown size={13} style={{ color: 'var(--text-muted)' }} />
       </button>
 
@@ -38,19 +48,25 @@ export default function UserMenu() {
           boxShadow: '0 16px 40px rgba(30,30,28,0.10)', zIndex: 100, overflow: 'hidden',
         }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Admin User</div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>admin@resort.com</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {user ? `${user.firstName} ${user.lastName}` : 'Loading…'}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{user?.email}</div>
           </div>
-          <div style={{ padding: '6px' }}>
-            <Link href="/admin/settings" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              <User size={14} /> My Profile
-            </Link>
-            <Link href="/admin/settings/notifications" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              <Settings size={14} /> Notification Settings
-            </Link>
-          </div>
-          <div style={{ padding: '6px', borderTop: '1px solid var(--border-subtle)' }}>
-            <button style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--red)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+          {isAdmin && (
+            <div style={{ padding: '6px' }}>
+              <Link href="/admin/settings" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                <User size={14} /> My Profile
+              </Link>
+              <Link href="/admin/settings/notifications" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                <Settings size={14} /> Notification Settings
+              </Link>
+            </div>
+          )}
+          <div style={{ padding: '6px', borderTop: isAdmin ? '1px solid var(--border-subtle)' : 'none' }}>
+            <button
+              onClick={() => { setOpen(false); logout(); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 10px', borderRadius: '8px', fontSize: '13px', color: 'var(--red)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
               <LogOut size={14} /> Log Out
             </button>
           </div>

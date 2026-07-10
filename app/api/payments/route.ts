@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { payments, reservations, guests, rooms } from '@/lib/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getSessionUser } from '@/lib/session';
+
+function requireAuth(req: NextRequest) {
+  const u = getSessionUser(req);
+  if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return u;
+}
 
 async function fetchPaymentWithJoins(paymentId: number) {
   const joined = await db
@@ -30,7 +37,9 @@ async function fetchPaymentWithJoins(paymentId: number) {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const data = await db
       .select()
@@ -42,7 +51,6 @@ export async function GET() {
 
     const result = data.map(({ payments: p, reservations: r, guests: g, rooms: rm }) => {
       const resolvedName = r?.guestName || (g ? `${g.firstName ?? ''} ${g.lastName ?? ''}`.trim() : undefined);
-      console.log('[payments-debug]', r?.confirmationCode, '| r.guestName:', r?.guestName, '| g.firstName:', g?.firstName, '| resolved:', resolvedName);
       return {
         ...p,
         reservation: r
@@ -64,6 +72,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { reservationId, amount, method, paymentType, referenceNumber, notes } = body;
@@ -85,8 +95,6 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // Re-fetch with joins so the client gets guest/room/reservation data
-    // immediately — no hard refresh needed.
     const full = await fetchPaymentWithJoins(newPayment.id);
     return NextResponse.json(full ?? newPayment, { status: 201 });
   } catch (error) {
@@ -96,6 +104,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { id, status, amount, notes } = body;
@@ -107,7 +117,10 @@ export async function PATCH(req: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (status) {
       updateData.status = status;
-      if (status === 'verified') updateData.verifiedAt = new Date();
+      if (status === 'verified') {
+        updateData.verifiedAt = new Date();
+        updateData.verifiedBy = auth.id;
+      }
     }
     if (amount !== undefined) updateData.amount = String(amount);
     if (notes !== undefined) updateData.notes = notes;
@@ -123,8 +136,6 @@ export async function PATCH(req: NextRequest) {
       .where(eq(payments.id, parseInt(id)))
       .returning();
 
-    // Re-fetch with joins so status changes (verify/reject/refund) also
-    // reflect correctly in the UI without a refresh.
     const full = await fetchPaymentWithJoins(updated.id);
     return NextResponse.json(full ?? updated);
   } catch (error) {

@@ -16,7 +16,7 @@ export const reservationStatusEnum = pgEnum('reservation_status', ['pending', 'c
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'verified', 'rejected', 'refunded']);
 export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'gcash', 'bank_transfer', 'credit_card', 'maya']);
 export const paymentTypeEnum = pgEnum('payment_type', ['deposit', 'partial', 'balance', 'full']);
-export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'staff', 'receptionist']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'manager', 'staff', 'receptionist']);
 export const activityTypeEnum = pgEnum('activity_type', ['create', 'update', 'delete', 'login', 'logout', 'verify', 'cancel']);
 export const notificationTypeEnum = pgEnum('notification_type', ['new_reservation', 'payment_pending', 'payment_verified', 'payment_rejected', 'check_in_today', 'check_out_today', 'cancellation', 'low_availability', 'system', 'overstay']);
 export const emailStatusEnum = pgEnum('email_status', ['sent', 'failed', 'pending']);
@@ -134,4 +134,22 @@ export const emailLogs = pgTable('email_logs', {
   entityId: integer('entity_id'),
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const monthlyExpenses = pgTable('monthly_expenses', {
+  id: serial('id').primaryKey(),
+  month: varchar('month', { length: 7 }).notNull().unique(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const monthlyExpenseItems = pgTable('monthly_expense_items', {
+  id: serial('id').primaryKey(),
+  month: varchar('month', { length: 7 }).notNull(),
+  description: varchar('description', { length: 255 }).notNull(),
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });

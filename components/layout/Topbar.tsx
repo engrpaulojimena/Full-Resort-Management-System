@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useNotifications } from '@/components/providers/NotificationProvider';
+import UserMenu from '@/components/layout/UserMenu';
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/admin/dashboard':              { title: 'Dashboard',             sub: 'Overview & live stats' },
@@ -90,16 +91,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           )}
         </Link>
 
-        {/* Avatar */}
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '11.5px', fontWeight: 700, color: 'white', flexShrink: 0,
-          cursor: 'pointer',
-        }}>
-          A
-        </div>
+        <UserMenu />
       </div>
     </header>
   );

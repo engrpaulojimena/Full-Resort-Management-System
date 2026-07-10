@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, CheckCircle, XCircle, Eye, Loader2, FileDown, Plus } from 'lucide-react';
+import { PaymentsSkeleton } from '@/components/ui/Skeleton';
 import StatusBadge from '@/components/ui/StatusBadge';
 import RecordPaymentModal from '@/components/payments/RecordPaymentModal';
-import PaymentSummaryModal from '@/components/payments/PaymentSummaryModal';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { generateReceiptPDF } from '@/lib/generateReceipt';
 import { PAYMENT_TYPE_LABELS } from '@/lib/payments';
@@ -19,6 +20,7 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,7 +37,6 @@ export default function PaymentsPage() {
   const [verifying, setVerifying] = useState(false);
   const { showToast, addNotification } = useNotifications();
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
-  const [summaryModal, setSummaryModal] = useState<{ payments: Payment[]; reservation?: Reservation } | null>(null);
 
   // ── Responsive: detect mobile width ──────────────────────────────────────
   const [windowW, setWindowW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
@@ -255,6 +256,8 @@ export default function PaymentsPage() {
     }
   }
 
+  if (loading) return <PaymentsSkeleton />;
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Summary cards */}
@@ -376,15 +379,8 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
-          <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--text-muted)' }} />
-        </div>
-      )}
-
       {/* Table — grouped by reservation */}
-      {!loading && (() => {
+      {(() => {
         const groupMap = new Map<number | string, Payment[]>();
         filtered.forEach(p => {
           const key = p.reservationId ?? `no-res-${p.id}`;
@@ -424,12 +420,17 @@ export default function PaymentsPage() {
                     const isExpanded = expandedGroups.has(group.key as number);
                     const latestPayment = group.rows[group.rows.length - 1];
                     const pendingRows = group.rows.filter(r => r.status === 'pending');
-                    const summaryStatus = group.hasPending ? 'pending' : group.rows.every(r => r.status === 'verified') ? 'verified' : group.rows.every(r => r.status === 'rejected') ? 'rejected' : 'verified';
+                    const statuses = group.rows.map(r => r.status);
+                    const summaryStatus = statuses.includes('pending') ? 'pending'
+                      : statuses.includes('rejected') ? 'rejected'
+                      : statuses.every(s => s === 'refunded') ? 'refunded'
+                      : statuses.some(s => s === 'verified') ? 'verified'
+                      : statuses[statuses.length - 1];
 
                     return (
                       <React.Fragment key={group.key}>
                         <tr
-                          onClick={() => setSummaryModal({ payments: group.rows, reservation: group.reservation })}
+                          onClick={() => group.reservationId && router.push(`/admin/payments/${group.reservationId}`)}
                           style={{ cursor: 'pointer', background: isExpanded ? 'rgba(111,163,154,0.04)' : undefined }}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
                           onMouseLeave={e => { e.currentTarget.style.background = isExpanded ? 'rgba(111,163,154,0.04)' : ''; }}
@@ -488,8 +489,7 @@ export default function PaymentsPage() {
                               <button
                                 onClick={e => {
                                   e.stopPropagation();
-                                  const latestRows = payments.filter(p => p.reservationId === group.reservationId);
-                                  setSummaryModal({ payments: latestRows.length ? latestRows : group.rows, reservation: group.reservation });
+                                  if (group.reservationId) router.push(`/admin/payments/${group.reservationId}`);
                                 }}
                                 className="btn btn-ghost"
                                 style={{ padding: '4px 10px', fontSize: '11px', height: '28px', whiteSpace: 'nowrap' }}>
@@ -622,19 +622,7 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* Payment Summary Modal */}
-      {summaryModal && (
-        <PaymentSummaryModal
-          payments={summaryModal.payments}
-          reservation={summaryModal.reservation}
-          onClose={() => setSummaryModal(null)}
-          actioningId={actioningId}
-          onVerify={(p) => { setVerifyConfirm(p); setVerifyAmount(parseFloat(String(p.amount)).toFixed(2)); setVerifyNote(''); }}
-          onReject={(p) => { handleDecision(p, 'rejected'); }}
-          onRefund={(p) => { setRefundConfirm(p); }}
-          onViewProof={(p) => { setProofModalPayment(p); }}
-        />
-      )}
+      {/* Payment detail now lives at /admin/payments/[id] */}
     </div>
   );
 }

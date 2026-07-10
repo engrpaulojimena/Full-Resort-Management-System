@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, CalendarCheck, Download, Loader2, LogIn, LogOut, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import NewReservationModal from '@/components/reservations/NewReservationModal';
+import { ReservationsSkeleton } from '@/components/ui/Skeleton';
 import { formatCurrency, formatDate, calculateNights } from '@/lib/utils';
 import { getReservationPaymentSummary, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS } from '@/lib/payments';
 import { Reservation, Payment, ReservationStatus } from '@/types';
@@ -226,6 +227,8 @@ export default function ReservationsPage() {
     }
   }
 
+  if (loading) return <ReservationsSkeleton />;
+
   // Guests currently overstaying
   const overstayingReservations = reservations.filter(r => getOverstayHours(r) > 0);
 
@@ -304,12 +307,7 @@ export default function ReservationsPage() {
 
       {/* Table */}
       <div className="surface" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-            <p style={{ fontSize: '13px' }}>Loading reservations...</p>
-          </div>
-        ) : (
-          <div className="table-scroll">
+        <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
@@ -458,8 +456,7 @@ export default function ReservationsPage() {
               </tbody>
             </table>
           </div>
-        )}
-        {!loading && filtered.length === 0 && (
+        {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
             <CalendarCheck size={28} style={{ marginBottom: '10px', opacity: 0.3 }} />
             <p style={{ fontSize: '13px' }}>No reservations found.</p>
