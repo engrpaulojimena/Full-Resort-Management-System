@@ -218,7 +218,7 @@ export default function DashboardPage() {
       {/* ── Stats grid row 1 ── */}
       <div className="grid-cols-4">
         <StatCard label="Available Rooms" value={stats.availableRooms} icon={BedDouble} iconColor="#74875A" iconBg="rgba(116,135,90,0.10)" />
-        <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} icon={TrendingUp} isCurrency />
+        <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} icon={CreditCard} isCurrency />
         <StatCard label="Today Check-ins" value={stats.todayCheckIns} icon={LogIn} iconColor="#234E43" iconBg="rgba(35,78,67,0.10)" />
         <StatCard label="Pending Payments" value={stats.pendingPayments} icon={CreditCard} iconColor="#AD8237" iconBg="rgba(173,130,55,0.10)" />
       </div>
