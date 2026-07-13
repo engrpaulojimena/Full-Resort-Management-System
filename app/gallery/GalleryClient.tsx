@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { X, ChevronLeft, ChevronRight, ZoomIn, Waves, Sunset, BedDouble, Building2, Sparkles, ImageOff } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Eye, Waves, Sun, BedDouble, BedDouble as Building2, Star, AlertTriangle } from 'lucide-react'
 
 type Category = 'All' | 'Pool' | 'Sunset' | 'Rooms' | 'Exterior'
 
@@ -125,9 +125,9 @@ const photos: GalleryPhoto[] = [
 const categories: Category[] = ['All', 'Pool', 'Sunset', 'Rooms', 'Exterior']
 
 const categoryIcons: Record<Category, any> = {
-  All: Sparkles,
+  All: Star,
   Pool: Waves,
-  Sunset: Sunset,
+  Sunset: Sun,
   Rooms: BedDouble,
   Exterior: Building2,
 }
@@ -248,7 +248,7 @@ export default function GalleryClient() {
                         {photo.category}
                       </span>
                       <div className="w-9 h-9 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/25 transition-colors">
-                        <ZoomIn className="w-4 h-4 text-white" />
+                        <Eye className="w-4 h-4 text-white" />
                       </div>
                     </div>
                   </div>
@@ -260,7 +260,7 @@ export default function GalleryClient() {
 
           {filtered.length === 0 && (
             <div className="text-center py-20 text-gray-400">
-              <ImageOff className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg">No photos in this category yet.</p>
             </div>
           )}

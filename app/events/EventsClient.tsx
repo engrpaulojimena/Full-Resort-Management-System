@@ -4,33 +4,33 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  PartyPopper,
-  Heart,
-  Briefcase,
+  Star,
+  CalendarCheck,
   Users,
-  Cake,
-  Sparkles,
+  Users,
+  BedDouble,
+  Plus,
   Waves,
   Sun,
-  UtensilsCrossed,
+  Utensils,
   Music,
-  CheckCircle2,
-  Send,
+  CheckCircle,
+  ArrowRight,
 } from 'lucide-react'
 
 const eventTypes = [
   {
-    icon: Heart,
+    icon: CalendarCheck,
     title: 'Weddings & Engagements',
     desc: 'Say "I do" with the sea as your backdrop. Our beachfront pavilion and pool deck make an intimate, picture-perfect venue.',
   },
   {
-    icon: Cake,
+    icon: BedDouble,
     title: 'Birthdays & Debuts',
     desc: 'Celebrate another year with a poolside party, complete with space for catering, music, and games for all ages.',
   },
   {
-    icon: Briefcase,
+    icon: Users,
     title: 'Corporate Outings',
     desc: 'Swap the boardroom for the beach. Great for team building, year-end parties, and company retreats.',
   },
@@ -43,7 +43,7 @@ const eventTypes = [
 
 const inclusions = [
   { icon: Waves, label: 'Exclusive use of the infinity pool & pavilion area' },
-  { icon: UtensilsCrossed, label: 'Open space for catering setup or your own caterer' },
+  { icon: Utensils, label: 'Open space for catering setup or your own caterer' },
   { icon: Sun, label: 'Tables, chairs, and beachfront seating' },
   { icon: Music, label: 'Power outlets for sound systems and lighting' },
 ]
@@ -165,7 +165,7 @@ export default function EventsClient() {
           {status === 'sent' ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
               <div className="w-16 h-16 rounded-full bg-palm-500/10 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle2 className="w-9 h-9 text-palm-500" />
+                <CheckCircle className="w-9 h-9 text-palm-500" />
               </div>
               <h3 className="font-display text-2xl font-bold text-ocean-900 mb-2">Inquiry Sent!</h3>
               <p className="text-gray-600 mb-6">
@@ -273,7 +273,7 @@ export default function EventsClient() {
                   'Sending Inquiry…'
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4" />
                     Send Inquiry
                   </>
                 )}
@@ -289,7 +289,7 @@ export default function EventsClient() {
           <Image src="/images/resort-villas-golden-hour.jpg" alt="Events CTA" fill className="object-cover" sizes="100vw" />
         </div>
         <div className="relative z-10 max-w-2xl mx-auto px-4 text-center">
-          <PartyPopper className="w-9 h-9 text-sand-300 mx-auto mb-4" />
+          <Star className="w-9 h-9 text-sand-300 mx-auto mb-4" />
           <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
             Have a Special Date in Mind?
           </h2>
@@ -298,7 +298,7 @@ export default function EventsClient() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/book" className="btn-primary text-base px-8 py-4">
-              <Sparkles className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               Book Villas
             </Link>
             <Link href="/contact" className="btn-secondary text-base px-8 py-4">

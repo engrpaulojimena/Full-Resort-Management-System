@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { Eye, XCircle, Loader2, AlertTriangle, Mail } from 'lucide-react';;
 import { useAuth } from '@/components/providers/AuthProvider';
 
 // useSearchParams() requires a Suspense boundary during prerender —
@@ -103,7 +103,7 @@ function LoginForm() {
             Password
           </label>
           <div style={{ position: 'relative' }}>
-            <Lock size={14} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <AlertTriangle size={14} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input
               type={showPw ? 'text' : 'password'}
               value={password}
@@ -119,7 +119,7 @@ function LoginForm() {
               onClick={() => setShowPw(p => !p)}
               style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', display: 'flex' }}
             >
-              {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              {showPw ? <XCircle size={15} /> : <Eye size={15} />}
             </button>
           </div>
         </div>

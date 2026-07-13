@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { BedDouble, CalendarCheck, CreditCard, Users, TrendingUp, LogIn, LogOut, Loader2, AlertTriangle } from 'lucide-react';
+import { BedDouble, CalendarCheck, CreditCard, Users, CreditCard as TrendingUp, LogIn, LogOut, Loader2, AlertTriangle } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import StatusBadge from '@/components/ui/StatusBadge';

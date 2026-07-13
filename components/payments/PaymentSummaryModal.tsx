@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, FileDown, Loader2, AlertTriangle, CheckCircle,
-  XCircle, Eye, RotateCcw, BedDouble, CalendarCheck, Users, Waves,
+  XCircle, Eye, ArrowRight, BedDouble, CalendarCheck, Users, Waves,
 } from 'lucide-react';
 import { Payment, Reservation } from '@/types';
 import { formatCurrency, formatDate, calculateNights } from '@/lib/utils';
@@ -30,7 +30,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   verified: <CheckCircle size={11} />,
   pending:  <AlertTriangle size={11} />,
   rejected: <XCircle size={11} />,
-  refunded: <RotateCcw size={11} />,
+  refunded: <ArrowRight size={11} />,
 };
 const STATUS_COLOR: Record<string, string> = {
   verified: '#16a34a',
@@ -190,13 +190,13 @@ function PaymentCard({
         )}
         {p.status === 'verified' && onRefund && (
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
-            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<RotateCcw size={10} />} label="Refund" disabled={isActioning} />
+            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<ArrowRight size={10} />} label="Refund" disabled={isActioning} />
           </div>
         )}
         {p.status === 'rejected' && onRefund && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
             <span style={{ fontSize: '11px', color: '#dc262680', fontStyle: 'italic', flex: 1 }}>Payment rejected</span>
-            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<RotateCcw size={10} />} label="Mark Refunded" disabled={isActioning} />
+            <ActionBtn onClick={() => onRefund(p)} color="#7c3aed" icon={<ArrowRight size={10} />} label="Mark Refunded" disabled={isActioning} />
           </div>
         )}
       </div>

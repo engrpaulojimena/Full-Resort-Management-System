@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronDown, Star, MapPin, Waves, Sun, Trees } from 'lucide-react'
+import { ChevronDown, Star, MapPin, Waves, Sun, Umbrella } from 'lucide-react'
 
 // Best hero candidates: 19285 (night pool+sunset), 19288 (daytime pool+sea), 19289 (golden hour pool)
 const heroImages = [
@@ -105,7 +105,7 @@ export default function HeroSection() {
           {[
             { Icon: Waves, label: 'Private Beach' },
             { Icon: Sun, label: 'Swimming Pool' },
-            { Icon: Trees, label: 'A-Frame Villas' },
+            { Icon: Umbrella, label: 'A-Frame Villas' },
           ].map((item) => (
             <div key={item.label} className="glass text-white text-sm font-medium px-4 py-2 rounded-full flex items-center gap-2 transition-colors hover:bg-white/15">
               <item.Icon className="w-3.5 h-3.5 text-sand-300" />

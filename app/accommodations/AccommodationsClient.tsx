@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  Users, BedDouble, Wifi, Wind, Coffee, Waves,
+  Users, BedDouble, Wifi, AlertTriangle, CreditCard, Waves,
   Eye, Star, ChevronLeft, ChevronRight, X, Check
 } from 'lucide-react'
 
@@ -23,9 +23,9 @@ const rooms = [
     description:
       'Step into our signature A-frame villa and wake up to the gentle sound of waves. The ground floor unit features a comfortable queen bed, modern mini-bar, and direct access to the resort grounds — steps away from our infinity pool.',
     amenities: [
-      { icon: Wind, label: 'Air Conditioning' },
+      { icon: AlertTriangle, label: 'Air Conditioning' },
       { icon: Waves, label: 'Pool Access' },
-      { icon: Coffee, label: 'Mini Bar & Kettle' },
+      { icon: CreditCard, label: 'Mini Bar & Kettle' },
       { icon: Eye, label: 'Garden View' },
       { icon: BedDouble, label: 'Queen Bed' },
       { icon: Wifi, label: 'Free Wi-Fi' },
@@ -46,7 +46,7 @@ const rooms = [
     description:
       'Tucked beneath the dramatic triangular architecture of our A-frame villas, the upper loft is an intimate retreat for two. Arched black beams frame a cozy loft bedroom with sweeping views of the pool and surrounding tropical trees.',
     amenities: [
-      { icon: Wind, label: 'Air Conditioning' },
+      { icon: AlertTriangle, label: 'Air Conditioning' },
       { icon: Waves, label: 'Pool Access' },
       { icon: Eye, label: 'Pool & Tree View' },
       { icon: BedDouble, label: 'Double Bed' },
@@ -69,11 +69,11 @@ const rooms = [
     description:
       'Perfect for families and groups, the Poolside Villa Package gives you exclusive access to a cluster of A-frame villas right beside our infinity pool. Enjoy your own deck seating, wicker loungers, and unobstructed views of the open water.',
     amenities: [
-      { icon: Wind, label: 'Air Conditioning' },
+      { icon: AlertTriangle, label: 'Air Conditioning' },
       { icon: Waves, label: 'Direct Pool Access' },
       { icon: Eye, label: 'Sea View' },
       { icon: Users, label: 'Up to 8 Guests' },
-      { icon: Coffee, label: 'Mini Bar & Kettle' },
+      { icon: CreditCard, label: 'Mini Bar & Kettle' },
       { icon: Wifi, label: 'Free Wi-Fi' },
     ],
     highlights: ['Private deck with loungers', 'Multiple bedrooms', 'Sea-facing orientation', 'Ideal for events & reunions'],
@@ -328,7 +328,7 @@ export default function AccommodationsClient() {
             {[
               { icon: Waves, title: 'Infinity Pool Access', desc: 'Unlimited use of our stunning infinity pool with breathtaking views.' },
               { icon: Wifi, title: 'Free Wi-Fi', desc: 'Stay connected throughout your stay with complimentary high-speed internet.' },
-              { icon: Coffee, title: 'Welcome Amenities', desc: 'Complimentary toiletries, kettle, and mini-bar stocked on arrival.' },
+              { icon: CreditCard, title: 'Welcome Amenities', desc: 'Complimentary toiletries, kettle, and mini-bar stocked on arrival.' },
               { icon: Star, title: 'Daily Housekeeping', desc: 'Our team ensures your villa is refreshed and spotless every day.' },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="bg-ocean-50 rounded-2xl p-6 text-center">

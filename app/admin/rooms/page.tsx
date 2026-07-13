@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, BedDouble, Users, Crown, Home, TreePine, Sparkles } from 'lucide-react';
+import { Plus, Search, BedDouble, Users, CreditCard, Home, Umbrella, Star } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import RoomModal, { ModalMode } from '@/components/rooms/AddRoomModal';
 import { RoomsSkeleton } from '@/components/ui/Skeleton';
@@ -14,10 +14,10 @@ const TYPE_LABELS: Record<RoomType, string> = {
 
 const ROOM_VISUALS: Record<RoomType, { icon: typeof BedDouble; gradient: string }> = {
   standard: { icon: BedDouble,  gradient: 'linear-gradient(135deg, #234E43 0%, #2F6656 100%)' },
-  deluxe:   { icon: Sparkles,   gradient: 'linear-gradient(135deg, #163832 0%, #234E43 100%)' },
-  suite:    { icon: Crown,      gradient: 'linear-gradient(135deg, #6E5B25 0%, #AD8237 100%)' },
+  deluxe:   { icon: Star,   gradient: 'linear-gradient(135deg, #163832 0%, #234E43 100%)' },
+  suite:    { icon: CreditCard,      gradient: 'linear-gradient(135deg, #6E5B25 0%, #AD8237 100%)' },
   villa:    { icon: Home,       gradient: 'linear-gradient(135deg, #0C1E1B 0%, #234E43 100%)' },
-  cottage:  { icon: TreePine,   gradient: 'linear-gradient(135deg, #3A4A2E 0%, #74875A 100%)' },
+  cottage:  { icon: Umbrella,   gradient: 'linear-gradient(135deg, #3A4A2E 0%, #74875A 100%)' },
 };
 
 const STATUS_FILTERS = [

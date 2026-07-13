@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, CalendarCheck, Download, Loader2, LogIn, LogOut, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Search, CalendarCheck, Download, Loader2, LogIn, LogOut, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import NewReservationModal from '@/components/reservations/NewReservationModal';
 import { ReservationsSkeleton } from '@/components/ui/Skeleton';
@@ -29,7 +29,7 @@ const STATUS_TABS: Array<{ value: string; label: string }> = [
 
 // The next logical action(s) available from each reservation status.
 const NEXT_ACTIONS: Record<ReservationStatus, Array<{ label: string; next: ReservationStatus; icon: typeof LogIn }>> = {
-  pending: [{ label: 'Confirm', next: 'confirmed', icon: CheckCircle2 }],
+  pending: [{ label: 'Confirm', next: 'confirmed', icon: CheckCircle }],
   confirmed: [{ label: 'Check In', next: 'checked_in', icon: LogIn }],
   checked_in: [{ label: 'Check Out', next: 'checked_out', icon: LogOut }],
   checked_out: [],

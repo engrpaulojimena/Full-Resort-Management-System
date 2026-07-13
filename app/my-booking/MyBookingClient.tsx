@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search,
-  CheckCircle2,
+  CheckCircle,
   Clock,
   XCircle,
   AlertTriangle,
   CreditCard,
-  CalendarDays,
+  CalendarCheck,
   BedDouble,
   Users,
   Loader2,
@@ -68,21 +68,21 @@ const RESERVATION_STATUS_CONFIG = {
     desc: 'Your booking request has been received and is awaiting deposit payment.',
   },
   confirmed: {
-    icon: CheckCircle2,
+    icon: CheckCircle,
     label: 'Confirmed',
     color: 'text-palm-600',
     bg: 'bg-palm-50 border-palm-200',
     desc: 'Your booking is confirmed! See you soon.',
   },
   checked_in: {
-    icon: CheckCircle2,
+    icon: CheckCircle,
     label: 'Checked In',
     color: 'text-ocean-600',
     bg: 'bg-ocean-50 border-ocean-200',
     desc: 'Welcome! Enjoy your stay at Kekamiya.',
   },
   checked_out: {
-    icon: CheckCircle2,
+    icon: CheckCircle,
     label: 'Completed',
     color: 'text-gray-500',
     bg: 'bg-gray-50 border-gray-200',
@@ -322,14 +322,14 @@ export default function MyBookingClient() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CalendarDays className="w-4 h-4 text-ocean-400 mt-0.5 shrink-0" />
+                      <CalendarCheck className="w-4 h-4 text-ocean-400 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Check-in</p>
                         <p className="font-semibold text-ocean-900">{formatDatePH(result.checkIn)}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CalendarDays className="w-4 h-4 text-ocean-400 mt-0.5 shrink-0" />
+                      <CalendarCheck className="w-4 h-4 text-ocean-400 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Check-out</p>
                         <p className="font-semibold text-ocean-900">{formatDatePH(result.checkOut)}</p>

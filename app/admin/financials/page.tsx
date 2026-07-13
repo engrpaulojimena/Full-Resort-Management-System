@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Edit2, Check, X, Plus, Trash2 } from 'lucide-react';
+import { CreditCard, AlertTriangle, CreditCard as DollarSign, Eye, Check, X, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { FinancialsSkeleton } from '@/components/ui/Skeleton';
 
@@ -222,14 +222,14 @@ export default function FinancialsPage() {
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
         <StatCard label="Total Revenue" value={active?.revenue ?? 0}
-          icon={TrendingUp} accent="var(--amber)"
+          icon={CreditCard} accent="var(--amber)"
           sub={'From verified payments'} />
         <StatCard label="Total Expenses" value={active?.expenses ?? 0}
-          icon={DollarSign} accent="var(--violet)"
+          icon={CreditCard} accent="var(--violet)"
           sub={items.length > 0 ? `${items.length} item${items.length !== 1 ? 's' : ''}` : 'No entries yet'} />
         <StatCard
           label="Net Income" value={net}
-          icon={net >= 0 ? TrendingUp : TrendingDown}
+          icon={CreditCard}
           accent={netColor}
           sub={active
             ? net >= 0 ? 'Profitable month 🎉' : 'Expenses exceed revenue'
@@ -326,7 +326,7 @@ export default function FinancialsPage() {
                     borderRadius: '6px', color: 'var(--text-secondary)',
                     fontSize: '11px', fontWeight: 600, padding: '4px 9px', cursor: 'pointer',
                   }}>
-                    <Edit2 size={11} /> Edit
+                    <Eye size={11} /> Edit
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}

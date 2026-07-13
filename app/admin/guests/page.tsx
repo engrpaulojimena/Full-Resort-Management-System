@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2, Eye, Trash2 } from 'lucide-react';
 import { getInitials, formatDate } from '@/lib/utils';
 import { Guest, Reservation } from '@/types';
 import { GuestsSkeleton } from '@/components/ui/Skeleton';
@@ -377,7 +377,7 @@ export default function GuestsPage() {
                   style={{ fontSize: '12px', padding: '7px', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '5px' }}
                   onClick={(e) => openEdit(guest, e)}
                 >
-                  <Pencil size={12} /> Edit
+                  <Eye size={12} /> Edit
                 </button>
               </div>
             </div>
@@ -540,7 +540,7 @@ export default function GuestsPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
               <button onClick={closeEdit} disabled={editSaving} className="btn btn-ghost" style={{ height: '38px', fontSize: '13px' }}>Cancel</button>
               <button onClick={handleEditSubmit} disabled={editSaving} className="btn btn-primary" style={{ height: '38px', fontSize: '13px', minWidth: '120px' }}>
-                {editSaving ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Pencil size={14} />}
+                {editSaving ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Eye size={14} />}
                 {editSaving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

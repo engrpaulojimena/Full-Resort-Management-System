@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Shield, ShieldCheck, User, Edit, Trash2, Loader2, X, Eye, EyeOff, Check } from 'lucide-react';
+import { Plus, Search, Shield, ShieldCheck, User, Eye, Trash2, Loader2, X, Eye, XCircle, Check } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { getInitials, formatDateTime } from '@/lib/utils';
 import { User as UserType, UserRole } from '@/types';
@@ -215,7 +215,7 @@ export default function UsersPage() {
                     <td>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: '12px', height: '30px' }} onClick={() => openEdit(user)}>
-                          <Edit size={12} /> Edit
+                          <Eye size={12} /> Edit
                         </button>
                         {user.role !== 'admin' && !isMe && (
                           deleteConfirm === user.id ? (
@@ -285,7 +285,7 @@ export default function UsersPage() {
                 <div style={{ position: 'relative' }}>
                   <input className="input" style={{ width: '100%', height: '38px', fontSize: '13px', paddingRight: '38px' }} type={showPw ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={modalMode === 'edit' ? '••••••••' : 'Min. 8 characters'} autoComplete="new-password" name="user-password" />
                   <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
-                    {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {showPw ? <XCircle size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </div>

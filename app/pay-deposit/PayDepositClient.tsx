@@ -3,15 +3,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
-  Smartphone,
-  Building2,
+  Phone,
+  BedDouble,
   Upload,
-  CheckCircle2,
-  Copy,
+  CheckCircle,
+  FileDown,
   Check,
   Loader2,
-  ArrowLeft,
-  ImageIcon,
+  ArrowRight,
+  Eye,
   X,
 } from 'lucide-react'
 
@@ -184,7 +184,7 @@ export default function PayDepositClient() {
         <div className="max-w-md w-full">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-10 text-center">
             <div className="w-20 h-20 rounded-full bg-palm-500/10 flex items-center justify-center mx-auto mb-5">
-              <CheckCircle2 className="w-11 h-11 text-palm-500" />
+              <CheckCircle className="w-11 h-11 text-palm-500" />
             </div>
             <h1 className="font-display text-2xl font-bold text-ocean-900 mb-2">
               Payment Submitted!
@@ -230,7 +230,7 @@ export default function PayDepositClient() {
             onClick={() => router.back()}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-ocean-600 transition-colors mb-6"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to confirmation
+            <ArrowRight className="w-4 h-4" /> Back to confirmation
           </button>
 
           {/* Amount summary */}
@@ -297,14 +297,14 @@ export default function PayDepositClient() {
                   }`}
                 >
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
-                    <Smartphone className="w-5 h-5 text-white" />
+                    <Phone className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <p className="font-bold text-ocean-900">GCash</p>
                     <p className="text-xs text-gray-500">Mobile payment</p>
                   </div>
                   {method === 'gcash' && (
-                    <CheckCircle2 className="w-5 h-5 text-ocean-500 ml-auto" />
+                    <CheckCircle className="w-5 h-5 text-ocean-500 ml-auto" />
                   )}
                 </button>
 
@@ -319,14 +319,14 @@ export default function PayDepositClient() {
                   }`}
                 >
                   <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-white" />
+                    <BedDouble className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <p className="font-bold text-ocean-900">Bank Transfer</p>
                     <p className="text-xs text-gray-500">Online banking / OTC</p>
                   </div>
                   {method === 'bank_transfer' && (
-                    <CheckCircle2 className="w-5 h-5 text-ocean-500 ml-auto" />
+                    <CheckCircle className="w-5 h-5 text-ocean-500 ml-auto" />
                   )}
                 </button>
               </div>
@@ -345,7 +345,7 @@ export default function PayDepositClient() {
                           onClick={() => copyToClipboard(GCASH_NUMBER.replace(/\s/g, ''), 'gcash_number')}
                           className="text-blue-500 hover:text-blue-700"
                         >
-                          {copiedField === 'gcash_number' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedField === 'gcash_number' ? <Check className="w-4 h-4" /> : <FileDown className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
@@ -385,7 +385,7 @@ export default function PayDepositClient() {
                           onClick={() => copyToClipboard(BANK_ACCOUNT_NUMBER.replace(/\s/g, ''), 'bank_acc')}
                           className="text-emerald-600 hover:text-emerald-800"
                         >
-                          {copiedField === 'bank_acc' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedField === 'bank_acc' ? <Check className="w-4 h-4" /> : <FileDown className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
@@ -437,7 +437,7 @@ export default function PayDepositClient() {
                           />
                         ) : (
                           <div className="w-16 h-16 rounded-lg bg-ocean-100 flex items-center justify-center">
-                            <ImageIcon className="w-7 h-7 text-ocean-400" />
+                            <Eye className="w-7 h-7 text-ocean-400" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

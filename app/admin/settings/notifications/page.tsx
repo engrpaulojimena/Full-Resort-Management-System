@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Send, Loader2, Info, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, Info, CheckCircle, XCircle } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { NotificationPreferences, EmailLog } from '@/types';
@@ -131,7 +131,7 @@ export default function NotificationSettingsPage() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input value={testEmail} onChange={e => setTestEmail(e.target.value)} type="email" placeholder="you@resort.com" className="input" style={{ flex: 1, minWidth: '220px', height: '38px' }} />
           <button onClick={sendTestEmail} disabled={sending || !testEmail} className="btn btn-primary" style={{ height: '38px', fontSize: '12.5px' }}>
-            {sending ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Send size={14} />}
+            {sending ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <ArrowRight size={14} />}
             {sending ? 'Sending…' : 'Send Test Email'}
           </button>
         </div>
@@ -143,7 +143,7 @@ export default function NotificationSettingsPage() {
             background: lastResult.ok ? 'rgba(111,163,154,0.08)' : 'rgba(201,125,110,0.08)',
             border: `1px solid ${lastResult.ok ? 'rgba(111,163,154,0.2)' : 'rgba(201,125,110,0.2)'}`,
           }}>
-            {lastResult.ok ? <CheckCircle2 size={14} style={{ flexShrink: 0, marginTop: '1px' }} /> : <XCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} />}
+            {lastResult.ok ? <CheckCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} /> : <XCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} />}
             <span>{lastResult.message}</span>
           </div>
         )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Star, Quote } from 'lucide-react'
+import { Star } from 'lucide-react'
 
 const reviews = [
   {
@@ -71,7 +71,7 @@ export default function TestimonialsSection() {
           {reviews.map((r) => (
             <div key={r.name} className="glass rounded-3xl p-6 card-hover">
               {/* Quote icon */}
-              <Quote className="w-8 h-8 text-ocean-300 mb-4 opacity-60" />
+              <Star className="w-8 h-8 text-ocean-300 mb-4 opacity-60" />
 
               {/* Text */}
               <p className="text-white/90 leading-relaxed mb-6 text-base">"{r.text}"</p>

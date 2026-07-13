@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  X, Loader2, Edit2, Upload, Trash2, Image as ImageIcon,
-  BedDouble, Users, Crown, Home, TreePine, Sparkles, ChevronLeft, ChevronRight, Plus,
+  X, Loader2, Eye, Upload, Trash2, Eye as ImageIcon,
+  BedDouble, Users, CreditCard, Home, Umbrella, Star, ArrowRight, ChevronRight, Plus,
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Room, RoomType, RoomStatus } from '@/types';
@@ -39,10 +39,10 @@ const STATUSES: Array<{ value: RoomStatus; label: string }> = [
 
 const ROOM_VISUALS: Record<RoomType, { icon: typeof BedDouble; gradient: string }> = {
   standard: { icon: BedDouble,  gradient: 'linear-gradient(135deg, #234E43 0%, #2F6656 100%)' },
-  deluxe:   { icon: Sparkles,   gradient: 'linear-gradient(135deg, #163832 0%, #234E43 100%)' },
-  suite:    { icon: Crown,      gradient: 'linear-gradient(135deg, #6E5B25 0%, #AD8237 100%)' },
+  deluxe:   { icon: Star,   gradient: 'linear-gradient(135deg, #163832 0%, #234E43 100%)' },
+  suite:    { icon: CreditCard,      gradient: 'linear-gradient(135deg, #6E5B25 0%, #AD8237 100%)' },
   villa:    { icon: Home,       gradient: 'linear-gradient(135deg, #0C1E1B 0%, #234E43 100%)' },
-  cottage:  { icon: TreePine,   gradient: 'linear-gradient(135deg, #3A4A2E 0%, #74875A 100%)' },
+  cottage:  { icon: Umbrella,   gradient: 'linear-gradient(135deg, #3A4A2E 0%, #74875A 100%)' },
 };
 
 const TYPE_LABELS: Record<RoomType, string> = {
@@ -110,7 +110,7 @@ function ImageCarousel({ images, type }: { images: string[]; type: RoomType }) {
         <>
           <button onClick={() => setIdx(i => (i - 1 + images.length) % images.length)}
             style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
-            <ChevronLeft size={16} />
+            <ArrowRight size={16} />
           </button>
           <button onClick={() => setIdx(i => (i + 1) % images.length)}
             style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
@@ -370,7 +370,7 @@ export default function RoomModal({ open, onOpenChange, mode: initialMode, room,
             {isView && (
               <button onClick={() => setMode('edit')} className="btn btn-ghost"
                 style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', height: '32px' }}>
-                <Edit2 size={13} /> Edit
+                <Eye size={13} /> Edit
               </button>
             )}
             <button onClick={() => onOpenChange(false)}

@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, FileDown, Loader2, AlertTriangle, CheckCircle,
-  XCircle, Eye, RotateCcw, BedDouble, CalendarCheck, Users, Waves,
-  CheckSquare,
+  ArrowRight, FileDown, Loader2, AlertTriangle, CheckCircle,
+  XCircle, Eye, ArrowRight, BedDouble, CalendarCheck, Users, Waves,
+  CheckCircle,
 } from 'lucide-react';
 import { Payment, Reservation } from '@/types';
 import { formatCurrency, formatDate, calculateNights } from '@/lib/utils';
@@ -41,7 +41,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   verified: <CheckCircle size={12} />,
   pending:  <AlertTriangle size={12} />,
   rejected: <XCircle size={12} />,
-  refunded: <RotateCcw size={12} />,
+  refunded: <ArrowRight size={12} />,
 };
 
 // ── Arc gauge ─────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ function PaymentCard({
         {p.status === 'verified' && onRefund && (
           <div style={{ paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
             <button onClick={() => onRefund(p)} disabled={isActioning} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: '#A79BC9', background: 'rgba(167,155,201,0.1)', border: '1px solid rgba(167,155,201,0.3)', cursor: 'pointer' }}>
-              <RotateCcw size={12} /> Refund
+              <ArrowRight size={12} /> Refund
             </button>
           </div>
         )}
@@ -473,7 +473,7 @@ export default function PaymentDetailPage() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
           <button onClick={() => router.push('/admin/payments')} className="btn btn-ghost"
             style={{ padding: '8px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <ArrowLeft size={15} /> Back
+            <ArrowRight size={15} /> Back
           </button>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -614,7 +614,7 @@ export default function PaymentDetailPage() {
                 {/* Loading flash post-verify */}
                 {justVerified ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px', animation: 'fadeSlideIn 0.3s ease-out' }}>
-                    <CheckSquare size={28} style={{ color: '#7FAE93' }} />
+                    <CheckCircle size={28} style={{ color: '#7FAE93' }} />
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#7FAE93' }}>Payment verified!</span>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Preparing receipt…</span>
                     <Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--text-muted)', marginTop: '4px' }} />

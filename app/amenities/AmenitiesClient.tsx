@@ -4,9 +4,9 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  Waves, Utensils, Music, Tent, Fish, Sunset,
+  Waves, Utensils, Music, Umbrella, Fish, Sun,
   Clock, MapPin, Users, ChevronDown, ChevronUp,
-  Ruler, User, Baby, Droplets
+  MapPin, User, Users, Waves
 } from 'lucide-react'
 
 const categories = ['All', 'Water & Pool', 'Dining', 'Events', 'Outdoor'] as const
@@ -23,7 +23,7 @@ const amenities = [
     featured: true,
   },
   {
-    icon: Sunset,
+    icon: Sun,
     title: 'Private Beach Access',
     category: 'Outdoor',
     desc: 'Direct access to the sandy shores fronting the beach. Spend your days sunbathing, beachcombing, or simply watching the waves roll in.',
@@ -43,7 +43,7 @@ const amenities = [
     featured: false,
   },
   {
-    icon: Tent,
+    icon: Umbrella,
     title: 'Cottages & Cabanas',
     category: 'Outdoor',
     desc: 'Shaded poolside cottages and beachside cabanas give you a private spot to relax, available for day use or as part of your overnight stay.',
@@ -89,7 +89,7 @@ const poolSpecs = [
     tagColor: 'text-ocean-600 bg-ocean-100',
   },
   {
-    icon: Baby,
+    icon: Users,
     label: 'Kids Pool',
     depth: '1.5 ft – 2.5 ft',
     length: '10 meters',
@@ -224,7 +224,7 @@ export default function AmenitiesClient() {
                 <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/40 to-transparent" />
                 <div className="absolute bottom-5 left-5 right-5 flex items-center gap-2">
                   <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md rounded-full px-4 py-2 text-white text-sm font-medium">
-                    <Droplets className="w-4 h-4 text-ocean-200" />
+                    <Waves className="w-4 h-4 text-ocean-200" />
                     Open 6:00 AM – 10:00 PM Daily
                   </div>
                 </div>
@@ -253,7 +253,7 @@ export default function AmenitiesClient() {
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div className="flex items-center gap-2">
-                            <Ruler className="w-4 h-4 text-gray-400 shrink-0" />
+                            <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
                             <div>
                               <p className="text-xs text-gray-400 leading-none mb-0.5">Depth</p>
                               <p className="text-sm font-bold text-gray-800">{pool.depth}</p>

@@ -4,13 +4,13 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import {
-  CalendarDays,
+  CalendarCheck,
   Users,
   BedDouble,
-  CheckCircle2,
+  CheckCircle,
   ShieldCheck,
   Clock,
-  Sparkles,
+  Star,
   ChevronDown,
   Loader2,
   AlertCircle,
@@ -60,7 +60,7 @@ function getRoomLabel(room: LiveRoom): string {
 }
 
 const perks = [
-  { icon: Sparkles,    label: 'Infinity pool & beach access' },
+  { icon: Star,    label: 'Infinity pool & beach access' },
   { icon: ShieldCheck, label: 'Free cancellation up to 48 hrs before check-in' },
   { icon: Clock,       label: 'Check-in 2:00 PM · Check-out 12:00 PM' },
 ]
@@ -265,7 +265,7 @@ export default function BookClient() {
       <section className="min-h-screen flex items-center justify-center bg-gray-50 pt-24 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-10 text-center">
           <div className="w-16 h-16 rounded-full bg-palm-500/10 flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-9 h-9 text-palm-500" />
+            <CheckCircle className="w-9 h-9 text-palm-500" />
           </div>
           <h1 className="font-display text-2xl font-bold text-ocean-900 mb-2">Request Sent!</h1>
           <p className="text-gray-600 mb-4">
@@ -332,7 +332,7 @@ export default function BookClient() {
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-semibold text-gray-700">Check-in</span>
                     <div className="relative">
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ocean-400" />
+                      <CalendarCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ocean-400" />
                       <input
                         type="date"
                         name="checkIn"
@@ -347,7 +347,7 @@ export default function BookClient() {
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-semibold text-gray-700">Check-out</span>
                     <div className="relative">
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ocean-400" />
+                      <CalendarCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ocean-400" />
                       <input
                         type="date"
                         name="checkOut"
@@ -380,7 +380,7 @@ export default function BookClient() {
                 )}
                 {availChecked && !availabilityLoading && unavailableIds.size === 0 && allRooms.length > 0 && (
                   <p className="flex items-center gap-1.5 text-xs text-palm-600 mt-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                     All rooms are available for these dates!
                   </p>
                 )}
