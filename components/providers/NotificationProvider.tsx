@@ -19,20 +19,21 @@ export interface Toast {
 }
 
 /* ─── Notification meta (icon + colour per type) ──────────────────────────── */
+// icon: lucide icon name — used by notifications page to render unique icons per type
 export const notificationTypeMeta: Record<
   NotificationType,
-  { label: string; color: string; emoji: string; bg: string }
+  { label: string; color: string; emoji: string; bg: string; icon: string }
 > = {
-  new_reservation:   { label: 'New Reservation',      color: '#6FA39A', emoji: '📋', bg: 'rgba(111,163,154,0.12)' },
-  payment_pending:   { label: 'Payment Pending',       color: '#FFB74D', emoji: '💳', bg: 'rgba(255,183,77,0.12)'  },
-  payment_verified:  { label: 'Payment Verified',      color: '#81C784', emoji: '✅', bg: 'rgba(129,199,132,0.12)' },
-  payment_rejected:  { label: 'Payment Rejected',      color: '#E57373', emoji: '❌', bg: 'rgba(229,115,115,0.12)' },
-  check_in_today:    { label: 'Check-in Today',        color: '#64B5F6', emoji: '🔑', bg: 'rgba(100,181,246,0.12)' },
-  check_out_today:   { label: 'Check-out Today',       color: '#BA68C8', emoji: '🚪', bg: 'rgba(186,104,200,0.12)' },
-  cancellation:      { label: 'Cancellation',          color: '#E57373', emoji: '🚫', bg: 'rgba(229,115,115,0.12)' },
-  low_availability:  { label: 'Low Availability',      color: '#FF8A65', emoji: '⚠️', bg: 'rgba(255,138,101,0.12)' },
-  system:            { label: 'System',                color: '#90A4AE', emoji: '⚙️', bg: 'rgba(144,164,174,0.12)' },
-  overstay:         { label: 'Overstay',              color: '#EF5350', emoji: '🚨', bg: 'rgba(239,83,80,0.12)'   },
+  new_reservation:   { label: 'New Reservation',      color: '#6FA39A', emoji: '📋', bg: 'rgba(111,163,154,0.12)',  icon: 'CalendarCheck'  },
+  payment_pending:   { label: 'Payment Pending',       color: '#FFB74D', emoji: '💳', bg: 'rgba(255,183,77,0.12)',   icon: 'CreditCard'     },
+  payment_verified:  { label: 'Payment Verified',      color: '#81C784', emoji: '✅', bg: 'rgba(129,199,132,0.12)',  icon: 'CheckCircle'    },
+  payment_rejected:  { label: 'Payment Rejected',      color: '#E57373', emoji: '❌', bg: 'rgba(229,115,115,0.12)', icon: 'XCircle'        },
+  check_in_today:    { label: 'Check-in Today',        color: '#64B5F6', emoji: '🔑', bg: 'rgba(100,181,246,0.12)', icon: 'LogIn'          },
+  check_out_today:   { label: 'Check-out Today',       color: '#BA68C8', emoji: '🚪', bg: 'rgba(186,104,200,0.12)', icon: 'LogOut'         },
+  cancellation:      { label: 'Cancellation',          color: '#E57373', emoji: '🚫', bg: 'rgba(229,115,115,0.12)', icon: 'XOctagon'       },
+  low_availability:  { label: 'Low Availability',      color: '#FF8A65', emoji: '⚠️', bg: 'rgba(255,138,101,0.12)', icon: 'AlertTriangle'  },
+  system:            { label: 'System',                color: '#90A4AE', emoji: '⚙️', bg: 'rgba(144,164,174,0.12)', icon: 'Settings'       },
+  overstay:          { label: 'Overstay',              color: '#EF5350', emoji: '🚨', bg: 'rgba(239,83,80,0.12)',   icon: 'AlarmClock'     },
 };
 
 /* ─── Context ─────────────────────────────────────────────────────────────── */

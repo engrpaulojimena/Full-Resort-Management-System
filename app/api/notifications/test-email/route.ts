@@ -3,7 +3,7 @@ import { sendEmail, testEmail } from '@/lib/email';
 import { getSessionUser } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
-  const u = getSessionUser(req);
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (u.role !== 'admin' && u.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

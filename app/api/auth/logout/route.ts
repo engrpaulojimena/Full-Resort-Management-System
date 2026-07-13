@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { activityLogs } from '@/lib/schema';
-import { getSessionUser } from '@/lib/session';
+import { getSessionUser, clearSessionCookie } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
   try {
-    const sessionUser = getSessionUser(req);
+    const sessionUser = await getSessionUser(req);
     if (sessionUser) {
       await db.insert(activityLogs).values({
         userId: sessionUser.id,
@@ -20,6 +20,6 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set('resort_session', '', { maxAge: 0, path: '/' });
+  clearSessionCookie(res);
   return res;
 }

@@ -319,6 +319,7 @@ h1, h2, h3, .font-display {
   .topbar-search   { display: none; }
   .topbar-title    { font-size: 15px !important; }
   .topbar-subtitle { display: none; }
+  .topbar-clock    { display: none; }
 
   /* Grids */
   .grid-cols-4,

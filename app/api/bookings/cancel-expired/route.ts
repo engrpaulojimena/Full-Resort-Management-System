@@ -1,3 +1,4 @@
+import { sql } from '@/lib/db'
 /**
  * GET /api/bookings/cancel-expired
  *
@@ -11,10 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
 import nodemailer from 'nodemailer'
 
-const sql = neon(process.env.DATABASE_URL!)
 
 const CRON_SECRET              = process.env.CRON_SECRET || ''
 const GMAIL_USER               = process.env.GMAIL_USER || ''
@@ -95,10 +94,17 @@ async function sendCancellationEmail(opts: {
 }
 
 export async function GET(req: NextRequest) {
-  // Auth check
+  // #5 — Fail-closed: if CRON_SECRET is not configured, refuse all requests.
+  // This prevents the endpoint from being publicly accessible in production.
+  if (!CRON_SECRET) {
+    console.error('[cancel-expired] CRON_SECRET is not set — refusing request. Set it in your Vercel environment variables.')
+    return NextResponse.json({ error: 'Endpoint not configured' }, { status: 503 })
+  }
+
+  // Auth check: accept Vercel's internal cron header OR a manual Bearer token
   const isVercelCron = req.headers.get('x-vercel-cron') === '1'
   const authHeader   = req.headers.get('authorization')
-  const bearerOk     = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
+  const bearerOk     = authHeader === `Bearer ${CRON_SECRET}`
 
   if (!isVercelCron && !bearerOk) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -108,6 +114,7 @@ export async function GET(req: NextRequest) {
     const expired = await sql`
       SELECT
         r.id,
+        r.room_id,
         r.confirmation_code,
         r.check_in,
         r.check_out,
@@ -156,6 +163,16 @@ export async function GET(req: NextRequest) {
             END
           WHERE id = ${row.id} AND status = 'pending'
         `
+
+        // #2 — Reset room back to 'available' so it can be booked again
+        await sql`
+          UPDATE rooms
+          SET status = 'available', updated_at = NOW()
+          WHERE id = ${row.room_id}
+            AND status = 'reserved'
+        `.catch((err: unknown) => {
+          console.error(`[cancel-expired] room reset failed for room ${row.room_id}:`, err)
+        })
 
         await sql`
           INSERT INTO activity_logs (type, entity, entity_id, description, created_at)

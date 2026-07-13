@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { getSessionUser } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
-  const sessionUser = getSessionUser(req);
+  const sessionUser = await getSessionUser(req);
   if (!sessionUser) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }

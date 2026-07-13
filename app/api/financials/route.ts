@@ -4,8 +4,8 @@ import { monthlyExpenses, monthlyExpenseItems, payments } from '@/lib/schema';
 import { eq, sql } from 'drizzle-orm';
 import { getSessionUser } from '@/lib/session';
 
-function requireAdmin(req: NextRequest) {
-  const u = getSessionUser(req);
+async function requireAdmin(req: NextRequest) {
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (u.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   return u;
@@ -18,7 +18,7 @@ function requireAdmin(req: NextRequest) {
  * one month, plus the full historical list for the trend table.
  */
 export async function GET(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(req.url);
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
  * Adds a new expense line item for the month.
  */
 export async function POST(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
  * Updates an existing expense line item.
  */
 export async function PATCH(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -172,7 +172,7 @@ export async function PATCH(req: NextRequest) {
  * Deletes an expense line item.
  */
 export async function DELETE(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
   try {

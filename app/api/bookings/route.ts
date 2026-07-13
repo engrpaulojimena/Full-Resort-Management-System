@@ -1,9 +1,8 @@
+import { sql } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
 import nodemailer from 'nodemailer'
 
 // ─── DB ───────────────────────────────────────────────────────────────────────
-const sql = neon(process.env.DATABASE_URL!)
 
 // ─── Email (Nodemailer/Gmail) ─────────────────────────────────────────────────
 const GMAIL_USER        = process.env.GMAIL_USER || ''

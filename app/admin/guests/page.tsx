@@ -62,31 +62,33 @@ export default function GuestsPage() {
     return d.getFullYear() === thisMonth.year && d.getMonth() === thisMonth.month;
   }).length;
 
-  const fetchAll = useCallback(async (q?: string) => {
-    setLoading(true);
+  const [searching, setSearching] = useState(false);
+
+  const fetchAll = useCallback(async (q?: string, isInitial = false) => {
+    if (isInitial) setLoading(true); else setSearching(true);
     try {
       const guestUrl = q ? `/api/guests?search=${encodeURIComponent(q)}` : '/api/guests';
-      const [guestRes, resRes] = await Promise.all([
-        fetch(guestUrl, { cache: 'no-store' }),
-        fetch('/api/reservations', { cache: 'no-store' }),
-      ]);
+      // On initial load, also fetch reservations. On search, only re-fetch guests.
+      const fetches: Promise<Response>[] = [fetch(guestUrl, { cache: 'no-store' })];
+      if (isInitial) fetches.push(fetch('/api/reservations', { cache: 'no-store' }));
+      const [guestRes, resRes] = await Promise.all(fetches);
       if (guestRes.ok) {
         const json = await guestRes.json();
         setGuests(Array.isArray(json) ? json : (json.data ?? []));
       }
-      if (resRes.ok) setReservations(await resRes.json());
+      if (resRes?.ok) setReservations(await resRes.json());
     } catch (err) {
       console.error('Failed to fetch guests:', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false); else setSearching(false);
     }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchAll(undefined, true); }, [fetchAll]);
 
-  // Debounced search — only fires when search string actually changes
+  // Debounced search — shows a subtle inline indicator, not the full skeleton
   useEffect(() => {
-    const t = setTimeout(() => fetchAll(search || undefined), 300);
+    const t = setTimeout(() => fetchAll(search || undefined, false), 350);
     return () => clearTimeout(t);
   }, [search, fetchAll]);
 
@@ -277,7 +279,10 @@ export default function GuestsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <div className="search-field">
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            {searching
+              ? <Loader2 size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', animation: 'spin 0.8s linear infinite' }} />
+              : <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            }
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search guests..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} autoComplete="off" name="guest-search" />
           </div>
           <button

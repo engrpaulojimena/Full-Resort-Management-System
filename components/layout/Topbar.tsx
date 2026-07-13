@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Menu, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useNotifications } from '@/components/providers/NotificationProvider';
@@ -23,10 +24,21 @@ interface TopbarProps {
   onMenuClick: () => void;
 }
 
+function useClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
 export default function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
   const page = PAGE_TITLES[pathname] ?? { title: 'Admin', sub: '' };
+  const now = useClock();
 
   return (
     <header
@@ -69,8 +81,21 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </div>
       </div>
 
-      {/* Right: notifications + avatar */}
+      {/* Right: clock + notifications + avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        {now && (
+          <div className="topbar-clock" style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+            marginRight: '4px', lineHeight: 1.2,
+          }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>
+              {now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
+              {now.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+          </div>
+        )}
         <Link
           href="/admin/notifications"
           style={{

@@ -4,15 +4,15 @@ import { activityLogs, users } from '@/lib/schema';
 import { eq, desc, ilike, or } from 'drizzle-orm';
 import { getSessionUser } from '@/lib/session';
 
-function requireAdmin(req: NextRequest) {
-  const u = getSessionUser(req);
+async function requireAdmin(req: NextRequest) {
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (u.role !== 'admin' && u.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   return u;
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(req.url);
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const u = getSessionUser(req);
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const body = await req.json();

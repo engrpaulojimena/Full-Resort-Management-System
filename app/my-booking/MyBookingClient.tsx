@@ -15,6 +15,7 @@ import {
   Loader2,
   ArrowRight,
   Mail,
+  Trash2,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -129,6 +130,9 @@ export default function MyBookingClient() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BookingStatusResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,6 +159,31 @@ export default function MyBookingClient() {
       setErrorMsg('Network error. Please check your connection and try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCancelBooking = async () => {
+    if (!result) return
+    setCancelling(true)
+    setCancelError('')
+    try {
+      const res = await fetch(
+        `/api/booking-status?code=${encodeURIComponent(result.confirmationCode)}&email=${encodeURIComponent(result.guestEmail)}`,
+        { method: 'DELETE' }
+      )
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setCancelError(data.error || 'Could not cancel your booking. Please contact us directly.')
+        setShowCancelConfirm(false)
+        return
+      }
+      setResult({ ...result, status: 'cancelled' })
+      setShowCancelConfirm(false)
+    } catch {
+      setCancelError('Network error. Please try again.')
+      setShowCancelConfirm(false)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -436,6 +465,70 @@ export default function MyBookingClient() {
                     <p className="text-sm text-amber-600">
                       We received your payment proof and our staff is verifying it. You'll get a confirmation email once approved — usually within a few hours.
                     </p>
+                  </div>
+                )}
+
+                {/* #8 — Guest cancel option */}
+                {(result.status === 'pending' || result.status === 'confirmed') && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <p className="text-sm font-semibold text-gray-700 mb-1">Need to cancel?</p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      {result.status === 'pending'
+                        ? 'Since no deposit has been verified yet, you can cancel this booking immediately.'
+                        : 'Cancellations are accepted up to 48 hours before check-in.'}
+                    </p>
+                    {cancelError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2 mb-3 flex items-start gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        {cancelError}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => { setCancelError(''); setShowCancelConfirm(true) }}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Cancel This Booking
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel confirmation modal */}
+                {showCancelConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => !cancelling && setShowCancelConfirm(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 z-10">
+                      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                        <Trash2 className="w-6 h-6 text-red-500" />
+                      </div>
+                      <h3 className="font-display font-bold text-lg text-ocean-900 text-center mb-2">Cancel Booking?</h3>
+                      <p className="text-sm text-gray-500 text-center mb-1">
+                        Booking <span className="font-mono font-bold text-ocean-700">{result.confirmationCode}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 text-center mb-6">
+                        This action cannot be undone. The room will be released for other guests.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowCancelConfirm(false)}
+                          disabled={cancelling}
+                          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          Keep Booking
+                        </button>
+                        <button
+                          onClick={handleCancelBooking}
+                          disabled={cancelling}
+                          className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {cancelling ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cancelling…</>
+                          ) : (
+                            'Yes, Cancel'
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 

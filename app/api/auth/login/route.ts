@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { users, activityLogs } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { setSessionCookie } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,15 +47,15 @@ export async function POST(req: NextRequest) {
 
     const { passwordHash: _, ...safeUser } = user;
 
-    const sessionData = JSON.stringify({ id: user.id, role: user.role, email: user.email, firstName: user.firstName, lastName: user.lastName });
-    const encoded = Buffer.from(sessionData).toString('base64');
-
     const res = NextResponse.json({ user: safeUser });
-    res.cookies.set('resort_session', encoded, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+
+    // Set a signed JWT session cookie (HS256 via jose)
+    await setSessionCookie(res, {
+      id: user.id,
+      role: user.role,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
 
     return res;

@@ -5,15 +5,15 @@ import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { getSessionUser } from '@/lib/session';
 
-function requireAdmin(req: NextRequest) {
-  const u = getSessionUser(req);
+async function requireAdmin(req: NextRequest) {
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (u.role !== 'admin' && u.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   return u;
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const data = await db.select().from(users).orderBy(users.firstName);
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
@@ -81,7 +81,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(req.url);

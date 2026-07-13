@@ -1,7 +1,6 @@
+import { sql } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL!)
 
 /**
  * GET /api/rooms/availability
@@ -56,7 +55,11 @@ export async function GET(req: NextRequest) {
         description: r.description,
         amenities: r.amenities ?? [],
         images: r.images ?? [],
-        available: r.status === 'available',
+        // Only 'maintenance' is a blanket (date-independent) block. 'reserved'/'occupied'
+        // are tied to specific reservation date ranges, so without a date range to check
+        // against we can't say this room is unavailable — pass checkIn/checkOut to get
+        // a real per-date availability answer.
+        available: r.status !== 'maintenance',
       })),
     })
   }
@@ -93,8 +96,10 @@ export async function GET(req: NextRequest) {
       description: r.description,
       amenities: r.amenities ?? [],
       images: r.images ?? [],
-      // A room is available only if it's not under maintenance AND has no
-      // conflicting reservation for the requested window.
+      // A room is available for the requested dates if it isn't physically out of
+      // service (maintenance) AND it has no reservation whose dates overlap the
+      // requested window. Being 'reserved'/'occupied' for a DIFFERENT date range
+      // must NOT block booking — that's what the overlap check below is for.
       available: r.status !== 'maintenance' && !bookedRoomIds.has(r.id),
     })),
   })

@@ -4,22 +4,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
-  CalendarCheck, BedDouble, Users,
-  CreditCard, Bell, Settings, X,
+  LayoutDashboard, CalendarCheck, BedDouble, Users,
+  CreditCard, BarChart3, Bell, ClipboardList,
+  ShieldCheck, Settings, X,
 } from 'lucide-react';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 const NAV_ITEMS = [
-  { href: '/admin/dashboard',     icon: CalendarCheck, label: 'Dashboard',       adminOnly: true  },
+  { href: '/admin/dashboard',     icon: LayoutDashboard, label: 'Dashboard',       adminOnly: true  },
   { href: '/admin/reservations',  icon: CalendarCheck,   label: 'Reservations',    adminOnly: false },
   { href: '/admin/rooms',         icon: BedDouble,       label: 'Rooms',           adminOnly: false },
   { href: '/admin/guests',        icon: Users,           label: 'Guests',          adminOnly: false },
   { href: '/admin/payments',      icon: CreditCard,      label: 'Payments',        adminOnly: false },
-  { href: '/admin/financials',    icon: CreditCard,       label: 'Financials',      adminOnly: true  },
+  { href: '/admin/financials',    icon: BarChart3,       label: 'Financials',      adminOnly: true  },
   { href: '/admin/notifications', icon: Bell,            label: 'Notifications',   adminOnly: false, badge: true },
-  { href: '/admin/logs',          icon: Bell,        label: 'Activity Logs',   adminOnly: true  },
-  { href: '/admin/users',         icon: Users,         label: 'User Management', adminOnly: true  },
+  { href: '/admin/logs',          icon: ClipboardList,   label: 'Activity Logs',   adminOnly: true  },
+  { href: '/admin/users',         icon: ShieldCheck,     label: 'User Management', adminOnly: true  },
   { href: '/admin/settings',      icon: Settings,        label: 'Settings',        adminOnly: true  },
 ];
 

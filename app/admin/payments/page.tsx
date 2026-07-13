@@ -76,7 +76,7 @@ export default function PaymentsPage() {
     isMounted.current = true;
     fetchPayments(true);
 
-    const interval = setInterval(() => fetchPayments(false), 10_000);
+    const interval = setInterval(() => fetchPayments(false), 60_000);
     function onVisible() { if (document.visibilityState === 'visible') fetchPayments(false); }
     document.addEventListener('visibilitychange', onVisible);
 

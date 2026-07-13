@@ -8,7 +8,7 @@ import { getSessionUser } from '@/lib/session';
 // Returns aggregated stats + small recent-data slices.
 // Replaces 5 separate full-table fetches on the dashboard page.
 export async function GET(req: NextRequest) {
-  const u = getSessionUser(req);
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {

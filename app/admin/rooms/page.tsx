@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, BedDouble, Users, CreditCard, Home, Umbrella, Star } from 'lucide-react';
+import { Plus, Search, BedDouble, Users, CreditCard, Home, Umbrella, Star, Wrench, CheckCircle, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import RoomModal, { ModalMode } from '@/components/rooms/AddRoomModal';
 import { RoomsSkeleton } from '@/components/ui/Skeleton';
 import { formatCurrency } from '@/lib/utils';
-import { Room, RoomType } from '@/types';
+import { Room, RoomType, RoomStatus } from '@/types';
 
 const TYPE_LABELS: Record<RoomType, string> = {
   standard: 'Standard', deluxe: 'Deluxe', suite: 'Suite', villa: 'Villa', cottage: 'Cottage',
@@ -33,6 +33,9 @@ export default function RoomsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Quick-toggle state (available ↔ maintenance, per card)
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen]   = useState(false);
@@ -73,6 +76,29 @@ export default function RoomsPage() {
 
   function handleUpdate(updated: Room) {
     setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
+  }
+
+  // Only allow toggling between available and maintenance.
+  // Occupied / reserved rooms are controlled by the reservation flow.
+  async function handleQuickToggle(room: Room, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (room.status === 'occupied' || room.status === 'reserved') return;
+    const nextStatus: RoomStatus = room.status === 'maintenance' ? 'available' : 'maintenance';
+    setTogglingId(room.id);
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: room.id, status: nextStatus }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const updated: Room = await res.json();
+      setRooms(prev => prev.map(r => r.id === updated.id ? updated : r));
+    } catch {
+      // silently ignore — user can try again
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   const filtered = rooms.filter(room => {
@@ -194,19 +220,40 @@ export default function RoomsPage() {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px' }}>
                   <button
                     onClick={e => openEdit(room, e)}
                     className="btn btn-ghost"
-                    style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>
+                    style={{ fontSize: '11.5px', padding: '7px', justifyContent: 'center' }}>
                     Edit
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); openView(room); }}
                     className="btn btn-primary"
-                    style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>
+                    style={{ fontSize: '11.5px', padding: '7px', justifyContent: 'center' }}>
                     View
                   </button>
+                  {/* Quick-toggle: available ↔ maintenance only */}
+                  {(room.status === 'available' || room.status === 'maintenance') ? (
+                    <button
+                      onClick={e => handleQuickToggle(room, e)}
+                      disabled={togglingId === room.id}
+                      title={room.status === 'maintenance' ? 'Mark as available' : 'Set to maintenance'}
+                      className="btn btn-ghost"
+                      style={{
+                        fontSize: '11.5px', padding: '7px', justifyContent: 'center',
+                        color: room.status === 'maintenance' ? 'var(--accent)' : 'var(--gold)',
+                      }}>
+                      {togglingId === room.id
+                        ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                        : room.status === 'maintenance'
+                          ? <CheckCircle size={13} />
+                          : <Wrench size={13} />
+                      }
+                    </button>
+                  ) : (
+                    <div /> /* placeholder to keep grid alignment */
+                  )}
                 </div>
               </div>
             </div>

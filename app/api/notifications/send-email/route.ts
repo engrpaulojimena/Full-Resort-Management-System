@@ -47,7 +47,7 @@ async function logEmail({
 }
 
 export async function POST(req: NextRequest) {
-  const u = getSessionUser(req);
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const body = await req.json();

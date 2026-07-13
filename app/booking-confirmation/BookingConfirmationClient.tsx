@@ -13,6 +13,7 @@ import {
   Phone,
   Mail,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 
 const DEPOSIT_RATE = 0.3 // 30% deposit
@@ -65,12 +66,27 @@ function getRoomLabel(room: RoomDetails) {
   return `${TYPE_LABEL[room.type] ?? room.type} · Room ${room.roomNumber}`
 }
 
+const DEPOSIT_DEADLINE_MINUTES = 30
+
 export default function BookingConfirmationClient() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [room, setRoom] = useState<RoomDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  // #9 — countdown to deposit deadline
+  const [deadlineMs] = useState(() => Date.now() + DEPOSIT_DEADLINE_MINUTES * 60 * 1000)
+  const [secondsLeft, setSecondsLeft] = useState(DEPOSIT_DEADLINE_MINUTES * 60)
+
+  useEffect(() => {
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((deadlineMs - Date.now()) / 1000))
+      setSecondsLeft(remaining)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [deadlineMs])
 
   useEffect(() => {
     const code          = searchParams.get('code')
@@ -173,6 +189,38 @@ export default function BookingConfirmationClient() {
             Salamat, <span className="font-semibold text-ocean-700">{booking.name.split(' ')[0]}</span>! We received your reservation request.
           </p>
         </div>
+
+        {/* #9 — 30-minute deposit deadline warning */}
+        {secondsLeft > 0 ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+            <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-700">
+                Deposit required within{' '}
+                <span className="tabular-nums font-mono">
+                  {String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:
+                  {String(secondsLeft % 60).padStart(2, '0')}
+                </span>
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Your booking will be <strong>automatically released</strong> if we don't receive
+                a deposit within 30 minutes of your request. Pay now to lock in your dates.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-red-600">Deposit window has expired</p>
+              <p className="text-xs text-red-500 mt-0.5">
+                This booking may be auto-cancelled shortly. If you still want these dates,
+                please pay immediately or{' '}
+                <a href="/my-booking" className="underline font-medium">check your booking status</a>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Confirmation code */}
         <div className="bg-ocean-700 rounded-2xl p-6 text-center mb-6">

@@ -122,8 +122,27 @@ function ctaButton(label: string, url: string): string {
 export function reservationConfirmationEmail(reservation: Reservation) {
   const guestName = `${reservation.guest?.firstName || ''} ${reservation.guest?.lastName || ''}`.trim();
   const nights = calculateNights(reservation.checkIn, reservation.checkOut);
+
+  // #10 — build the pay-deposit deep link so the guest can pay with one click
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const totalAmount = Number(reservation.totalAmount) || 0;
+  const depositAmount = Math.ceil(totalAmount * 0.3);
+  const roomLabel = `${reservation.room?.type || ''} · ${reservation.room?.roomNumber || ''}`.trim();
+  const payParams = new URLSearchParams({
+    code:    reservation.confirmationCode,
+    id:      String(reservation.id),
+    name:    guestName,
+    email:   reservation.guest?.email || '',
+    amount:  String(depositAmount),
+    total:   String(totalAmount),
+    room:    roomLabel,
+    checkIn:  reservation.checkIn ? String(reservation.checkIn) : '',
+    checkOut: reservation.checkOut ? String(reservation.checkOut) : '',
+  });
+  const payUrl = siteUrl ? `${siteUrl}/pay-deposit?${payParams.toString()}` : '';
+
   const body = `
-    <h1 style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;color:#2B2B28;margin:0 0 6px;">Booking confirmed 🌴</h1>
+    <h1 style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;color:#2B2B28;margin:0 0 6px;">Booking request received 🌴</h1>
     <p style="font-size:14px;color:#83837B;line-height:1.6;margin:0 0 20px;">Hi ${guestName || 'there'}, thank you for booking with us. Here are your reservation details:</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #F4F5F2;">
       ${infoRow('Confirmation Code', reservation.confirmationCode)}
@@ -133,12 +152,27 @@ export function reservationConfirmationEmail(reservation: Reservation) {
       ${infoRow('Nights', `${nights}`)}
       ${infoRow('Guests', `${reservation.adults} adults${reservation.children ? `, ${reservation.children} children` : ''}`)}
       ${infoRow('Total Amount', formatCurrency(reservation.totalAmount))}
+      ${infoRow('Deposit Required (30%)', formatCurrency(String(depositAmount)))}
     </table>
-    <p style="font-size:13px;color:#83837B;line-height:1.6;margin:20px 0 0;">Please keep your confirmation code handy at check-in. If you have any special requests, just reply to your booking confirmation or contact the front desk.</p>
+
+    <div style="margin:24px 0;padding:16px;background:#FFF8E7;border:1px solid #F5CC6A;border-radius:10px;">
+      <p style="font-size:13px;font-weight:700;color:#92690A;margin:0 0 6px;">⏱ Action required within 30 minutes</p>
+      <p style="font-size:13px;color:#92690A;margin:0 0 14px;line-height:1.5;">
+        To secure your booking, please pay a <strong>${formatCurrency(String(depositAmount))}</strong> deposit
+        via GCash or Bank Transfer. Your booking will be <strong>automatically cancelled</strong> if no
+        deposit is received within 30 minutes.
+      </p>
+      ${payUrl ? ctaButton('Pay Deposit Now →', payUrl) : '<p style="font-size:13px;color:#92690A;margin:0;">Visit our website to pay your deposit.</p>'}
+    </div>
+
+    <p style="font-size:13px;color:#83837B;line-height:1.6;margin:0;">
+      Already paid? No worries — you can check your booking status anytime at
+      ${siteUrl ? `<a href="${siteUrl}/my-booking" style="color:#6FA39A;">${siteUrl}/my-booking</a>` : 'our website'}.
+    </p>
   `;
   return {
-    subject: `Your ${RESORT_NAME} booking is confirmed — ${reservation.confirmationCode}`,
-    html: emailShell(body, `Your reservation ${reservation.confirmationCode} is confirmed.`),
+    subject: `Action needed: secure your booking ${reservation.confirmationCode} | ${RESORT_NAME}`,
+    html: emailShell(body, `Pay your deposit to confirm booking ${reservation.confirmationCode}.`),
   };
 }
 

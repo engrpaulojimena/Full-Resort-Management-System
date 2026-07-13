@@ -4,14 +4,14 @@ import { guests } from '@/lib/schema';
 import { ilike, or, count } from 'drizzle-orm';
 import { getSessionUser } from '@/lib/session';
 
-function requireAuth(req: NextRequest) {
-  const u = getSessionUser(req);
+async function requireAuth(req: NextRequest) {
+  const u = await getSessionUser(req);
   if (!u) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   return u;
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
+  const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(req.url);
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireAuth(req);
+  const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();

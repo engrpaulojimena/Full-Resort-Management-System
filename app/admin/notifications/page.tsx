@@ -2,8 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bell, CheckCheck, Mail, Settings } from 'lucide-react';
+import {
+  Bell, CheckCheck, Settings, Mail,
+  CalendarCheck, CreditCard, CheckCircle, XCircle,
+  LogIn, LogOut, XOctagon, AlertTriangle, AlarmClock,
+  type LucideIcon,
+} from 'lucide-react';
 import { useNotifications, notificationTypeMeta } from '@/components/providers/NotificationProvider';
+
+const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
+  CalendarCheck, CreditCard, CheckCircle, XCircle,
+  LogIn, LogOut, XOctagon, AlertTriangle, AlarmClock,
+  Settings, Bell,
+};
 import { timeAgo, formatDateTime } from '@/lib/utils';
 import { NotificationType } from '@/types';
 
@@ -77,7 +88,7 @@ export default function NotificationsPage() {
                 }}
               >
                 <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Bell size={16} color={meta.color} />
+                  {(() => { const Icon = NOTIFICATION_ICONS[meta.icon] ?? Bell; return <Icon size={16} color={meta.color} />; })()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>

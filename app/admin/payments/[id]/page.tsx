@@ -264,20 +264,57 @@ function ProofModal({ payment, onClose, onVerify, onReject, actioningId }: {
           <div><span style={{ color: 'var(--text-muted)' }}>Method: </span><strong style={{ color: 'var(--text-primary)' }}>{METHOD_LABELS[payment.method]}</strong></div>
           <div><span style={{ color: 'var(--text-muted)' }}>Ref #: </span><strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{payment.referenceNumber || '—'}</strong></div>
         </div>
-        {payment.proofUrl ? (
-          payment.proofUrl.startsWith('data:image') ? (
-            <img src={payment.proofUrl} alt="Proof of payment" style={{ width: '100%', borderRadius: '10px', border: '1px solid var(--border)', display: 'block' }} />
-          ) : payment.proofUrl.startsWith('data:application/pdf') ? (
+        {/* #11 — Proof image display: handle data URIs, relative paths, and absolute URLs */}
+        {payment.proofUrl ? (() => {
+          const url = payment.proofUrl;
+          const isDataImage = url.startsWith('data:image');
+          const isDataPdf   = url.startsWith('data:application/pdf');
+          // Treat any non-data URL (relative path like /uploads/... or absolute https://) as a direct image/file link
+          const isRemoteOrPath = !url.startsWith('data:');
+
+          if (isDataImage || isRemoteOrPath) {
+            return (
+              <div>
+                <img
+                  src={url}
+                  alt="Proof of payment"
+                  style={{ width: '100%', borderRadius: '10px', border: '1px solid var(--border)', display: 'block', maxHeight: '480px', objectFit: 'contain', background: 'var(--bg-hover)' }}
+                  onError={(e) => {
+                    // If image fails to load, fall back to a download link
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = 'block';
+                  }}
+                />
+                <div style={{ display: 'none', textAlign: 'center', padding: '20px', background: 'var(--bg-hover)', borderRadius: '10px', marginTop: '8px' }}>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '13px' }}>Image could not be displayed.</p>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '13px' }}>
+                    🔗 Open in new tab
+                  </a>
+                </div>
+              </div>
+            );
+          }
+
+          if (isDataPdf) {
+            return (
+              <div style={{ textAlign: 'center', padding: '32px', background: 'var(--bg-hover)', borderRadius: '10px' }}>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>PDF proof of payment</p>
+                <a href={url} download={`proof-${payment.reservation?.confirmationCode}.pdf`} className="btn btn-ghost" style={{ fontSize: '13px' }}>⬇ Download PDF</a>
+              </div>
+            );
+          }
+
+          return (
             <div style={{ textAlign: 'center', padding: '32px', background: 'var(--bg-hover)', borderRadius: '10px' }}>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>PDF proof of payment</p>
-              <a href={payment.proofUrl} download={`proof-${payment.reservation?.confirmationCode}.pdf`} className="btn btn-ghost" style={{ fontSize: '13px' }}>⬇ Download PDF</a>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '13px' }}>Cannot preview this file type.</p>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '13px' }}>
+                🔗 Open file
+              </a>
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '32px', background: 'var(--bg-hover)', borderRadius: '10px' }}>
-              <p style={{ color: 'var(--text-muted)' }}>Preview not available.</p>
-            </div>
-          )
-        ) : (
+          );
+        })() : (
           <div style={{ textAlign: 'center', padding: '32px', background: 'var(--bg-hover)', borderRadius: '10px' }}>
             <p style={{ color: 'var(--text-muted)' }}>No proof uploaded.</p>
           </div>

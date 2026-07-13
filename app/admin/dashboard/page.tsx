@@ -47,6 +47,22 @@ export default function DashboardPage() {
     recentLogs: ActivityLog[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [revenueChartData, setRevenueChartData] = useState<{ month: string; revenue: number }[]>([]);
+
+  // Fetch last 6 months of revenue from /api/financials for the chart (one-time on mount)
+  useEffect(() => {
+    fetch('/api/financials', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { history?: { month: string; revenue: number }[] } | null) => {
+        if (!data?.history) return;
+        const recent = [...data.history].reverse().slice(-6).map(row => ({
+          month: new Date(row.month + '-01').toLocaleString('en-PH', { month: 'short' }),
+          revenue: row.revenue,
+        }));
+        setRevenueChartData(recent);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -109,8 +125,7 @@ export default function DashboardPage() {
     }));
   }, [dashData]);
 
-  // Revenue chart: served by /api/financials — keep a simple placeholder here
-  const revenueChartData = useMemo(() => [], []);
+
 
   const recentReservations = useMemo(
     () => dashData?.recentReservations ?? [],

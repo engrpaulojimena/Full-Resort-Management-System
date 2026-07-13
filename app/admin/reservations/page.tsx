@@ -44,8 +44,9 @@ function isExpiredPending(reservation: Reservation, payments: Payment[]): boolea
   if (reservation.status !== 'pending') return false;
   const hasPayment = payments.some(p => p.reservationId === reservation.id);
   if (hasPayment) return false;
-  const createdAt = new Date(reservation.createdAt ?? reservation.checkIn); // fallback to checkIn if no createdAt
-  const minutesElapsed = (Date.now() - createdAt.getTime()) / (1000 * 60);
+  // If no createdAt recorded, we can't determine expiry — treat as not expired
+  if (!reservation.createdAt) return false;
+  const minutesElapsed = (Date.now() - new Date(reservation.createdAt).getTime()) / (1000 * 60);
   return minutesElapsed > 30;
 }
 
