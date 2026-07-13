@@ -139,7 +139,7 @@ const categoryIcons: Record<Category, any> = {
   Pool: Waves,
   Sunset: Sun,
   Rooms: BedDouble,
-  Exterior: Building2,
+  Exterior: BedDouble,
 }
 
 export default function GalleryClient() {
