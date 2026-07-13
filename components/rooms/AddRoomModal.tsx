@@ -196,7 +196,7 @@ function ImageManager({ images, onChange }: { images: string[]; onChange: (imgs:
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
           style={{ border: '1.5px dashed var(--border)', borderRadius: '10px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '12px' }}>
-          <ImageIcon size={28} strokeWidth={1.2} />
+          <Eye size={28} strokeWidth={1.2} />
           <span>Drop images here or click to upload</span>
           <span style={{ fontSize: '11px', opacity: 0.7 }}>JPG, PNG, WebP — uploaded to Cloudinary</span>
         </div>
