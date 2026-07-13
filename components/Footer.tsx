@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Facebook, Instagram, Heart } from 'lucide-react'
+import { ExternalLink, MessageCircle, Star } from 'lucide-react'
 
 export default function Footer() {
   return (
@@ -36,8 +36,8 @@ export default function Footer() {
             </p>
             <div className="flex gap-3">
               {[
-                { icon: <Facebook className="w-4 h-4" />, href: 'https://facebook.com/kekamiyabeachresort', label: 'Facebook' },
-                { icon: <Instagram className="w-4 h-4" />, href: '#', label: 'Instagram' },
+                { icon: <ExternalLink className="w-4 h-4" />, href: 'https://facebook.com/kekamiyabeachresort', label: 'Facebook' },
+                { icon: <MessageCircle className="w-4 h-4" />, href: '#', label: 'Instagram' },
                 {
                   icon: (
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -114,7 +114,7 @@ export default function Footer() {
         <div className="pt-6 border-t border-ocean-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-ocean-400 text-xs">
           <span>© {new Date().getFullYear()} Kekamiya Beach Resort. All rights reserved.</span>
           <span className="flex items-center gap-1">
-            Made with <Heart className="w-3 h-3 fill-coral-400 text-coral-400" /> in the Philippines
+            Made with <Star className="w-3 h-3 fill-coral-400 text-coral-400" /> in the Philippines
           </span>
         </div>
       </div>
