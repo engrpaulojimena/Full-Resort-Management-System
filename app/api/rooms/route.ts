@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   try {
-    const data = await db.select().from(rooms).orderBy(rooms.roomNumber);
+    const data = await db
+      .select()
+      .from(rooms)
+      .orderBy(rooms.roomNumber);
     return NextResponse.json(data);
   } catch (error) {
     console.error('GET /api/rooms error:', error);

@@ -291,7 +291,7 @@ export default function PaymentsPage() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <div className="search-field">
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by booking code or ref#..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by booking code or ref#..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} autoComplete="off" name="payments-search" />
           </div>
           <button className="btn btn-primary" style={{ height: '36px', fontSize: '12.5px' }} onClick={() => setRecordModalOpen(true)}>
             <Plus size={14} /> Record Payment

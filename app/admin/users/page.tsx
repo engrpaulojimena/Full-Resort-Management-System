@@ -155,7 +155,7 @@ export default function UsersPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div className="search-field">
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} autoComplete="off" name="user-search" />
         </div>
         {canManage && (
           <button className="btn btn-primary" style={{ height: '36px', fontSize: '12.5px' }} onClick={openInvite}>
@@ -274,7 +274,7 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>Email</label>
-                    <input className="input" style={{ width: '100%', height: '38px', fontSize: '13px' }} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="juan@resort.com" />
+                    <input className="input" style={{ width: '100%', height: '38px', fontSize: '13px' }} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="juan@resort.com" autoComplete="off" name="user-email" />
                   </div>
                 </>
               )}
@@ -283,7 +283,7 @@ export default function UsersPage() {
                   {modalMode === 'edit' ? 'New Password (leave blank to keep)' : 'Password'}
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input className="input" style={{ width: '100%', height: '38px', fontSize: '13px', paddingRight: '38px' }} type={showPw ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={modalMode === 'edit' ? '••••••••' : 'Min. 8 characters'} />
+                  <input className="input" style={{ width: '100%', height: '38px', fontSize: '13px', paddingRight: '38px' }} type={showPw ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={modalMode === 'edit' ? '••••••••' : 'Min. 8 characters'} autoComplete="new-password" name="user-password" />
                   <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                     {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { reservations, guests, rooms, activityLogs, payments } from '@/lib/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql, getTableColumns } from 'drizzle-orm';
 import { generateConfirmationCode } from '@/lib/utils';
 import { getSessionUser } from '@/lib/session';
 
@@ -15,34 +15,78 @@ export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   try {
+    const { searchParams } = new URL(req.url);
+    const limit  = Math.min(parseInt(searchParams.get('limit')  ?? '100'), 200);
+    const offset = parseInt(searchParams.get('offset') ?? '0');
+
+    // Single query: reservations + guest + room + payment aggregate.
+    // amountPaid and paymentCount are computed in the DB — no in-memory loops.
     const data = await db
-      .select()
+      .select({
+        // All reservation columns
+        ...getTableColumns(reservations),
+        // Guest name fields only (avoid sending all guest columns on every row)
+        guestFirstName:  guests.firstName,
+        guestLastName:   guests.lastName,
+        guestEmail:      guests.email,
+        guestPhone:      guests.phone,
+        guestNationality: guests.nationality,
+        // Room summary
+        roomNumber:      rooms.roomNumber,
+        roomType:        rooms.type,
+        roomFloor:       rooms.floor,
+        roomCapacity:    rooms.capacity,
+        roomPrice:       rooms.pricePerNight,
+        // Payment aggregate — no extra round-trip, no in-memory loop
+        amountPaid: sql<number>`
+          COALESCE(SUM(
+            CASE WHEN ${payments.status} = 'verified'
+            THEN ${payments.amount}::numeric ELSE 0 END
+          ), 0)`,
+        paymentCount: sql<number>`COUNT(${payments.id})`,
+      })
       .from(reservations)
-      .leftJoin(guests, eq(reservations.guestId, guests.id))
-      .leftJoin(rooms, eq(reservations.roomId, rooms.id))
-      .orderBy(desc(reservations.createdAt));
+      .leftJoin(guests,   eq(reservations.guestId,   guests.id))
+      .leftJoin(rooms,    eq(reservations.roomId,     rooms.id))
+      .leftJoin(payments, eq(payments.reservationId,  reservations.id))
+      .groupBy(reservations.id, guests.id, rooms.id)
+      .orderBy(desc(reservations.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    const allPayments = await db.select().from(payments);
-    const paymentsByResId: Record<number, typeof allPayments> = {};
-    for (const p of allPayments) {
-      if (p.reservationId == null) continue;
-      if (!paymentsByResId[p.reservationId]) paymentsByResId[p.reservationId] = [];
-      paymentsByResId[p.reservationId].push(p);
-    }
-
-    const result = data.map(({ reservations: r, guests: g, rooms: rm }) => {
-      const resPayments = paymentsByResId[r.id] ?? [];
-      const amountPaid = resPayments
-        .filter(p => p.status === 'verified')
-        .reduce((s, p) => s + parseFloat(String(p.amount)), 0);
-      return {
-        ...r,
-        guest: g ?? undefined,
-        room: rm ?? undefined,
-        payments: resPayments,
-        amountPaid,
-      };
-    });
+    const result = data.map((r) => ({
+      id:               r.id,
+      confirmationCode: r.confirmationCode,
+      guestId:          r.guestId,
+      roomId:           r.roomId,
+      status:           r.status,
+      checkIn:          r.checkIn,
+      checkOut:         r.checkOut,
+      adults:           r.adults,
+      children:         r.children,
+      guestName:        r.guestName,
+      totalAmount:      r.totalAmount,
+      specialRequests:  r.specialRequests,
+      source:           r.source,
+      createdAt:        r.createdAt,
+      updatedAt:        r.updatedAt,
+      amountPaid:       Number(r.amountPaid),
+      paymentCount:     Number(r.paymentCount),
+      guest: r.guestFirstName ? {
+        firstName:   r.guestFirstName,
+        lastName:    r.guestLastName,
+        email:       r.guestEmail,
+        phone:       r.guestPhone,
+        nationality: r.guestNationality,
+      } : undefined,
+      room: r.roomNumber ? {
+        roomNumber: r.roomNumber,
+        type:       r.roomType,
+        floor:      r.roomFloor,
+        capacity:   r.roomCapacity,
+        pricePerNight: r.roomPrice,
+      } : undefined,
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

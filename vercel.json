@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/bookings/cancel-expired",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
+

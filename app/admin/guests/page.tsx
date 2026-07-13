@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2 } from 'lucide-react';
+import { Plus, Search, Users, Mail, Phone, Star, BedDouble, LogOut, X, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { getInitials, formatDate } from '@/lib/utils';
 import { Guest, Reservation } from '@/types';
 import { GuestsSkeleton } from '@/components/ui/Skeleton';
@@ -27,9 +27,22 @@ export default function GuestsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Add modal
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
+
+  // Edit modal
+  const [editGuest, setEditGuest] = useState<Guest | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editErrors, setEditErrors] = useState<Partial<typeof EMPTY_FORM>>({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Delete confirm
+  const [deleteGuest, setDeleteGuest] = useState<Guest | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Build a map of guestId → their active (checked_in) reservation
   const activeReservationByGuest = new Map<number, Reservation>(
@@ -57,8 +70,11 @@ export default function GuestsPage() {
         fetch(guestUrl, { cache: 'no-store' }),
         fetch('/api/reservations', { cache: 'no-store' }),
       ]);
-      if (guestRes.ok) setGuests(await guestRes.json());
-      if (resRes.ok)   setReservations(await resRes.json());
+      if (guestRes.ok) {
+        const json = await guestRes.json();
+        setGuests(Array.isArray(json) ? json : (json.data ?? []));
+      }
+      if (resRes.ok) setReservations(await resRes.json());
     } catch (err) {
       console.error('Failed to fetch guests:', err);
     } finally {
@@ -68,6 +84,7 @@ export default function GuestsPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Debounced search — only fires when search string actually changes
   useEffect(() => {
     const t = setTimeout(() => fetchAll(search || undefined), 300);
     return () => clearTimeout(t);
@@ -77,12 +94,12 @@ export default function GuestsPage() {
     ? guests.filter(g => activeReservationByGuest.has(g.id))
     : guests;
 
+  // ── Add modal ──────────────────────────────────────────────────────────
   function openModal() {
     setForm(EMPTY_FORM);
     setErrors({});
     setShowModal(true);
   }
-
   function closeModal() { setShowModal(false); }
 
   function validate() {
@@ -114,7 +131,6 @@ export default function GuestsPage() {
           notes: form.notes.trim() || null,
         }),
       });
-
       if (res.ok) {
         const newGuest = await res.json();
         setGuests(prev => [newGuest, ...prev]);
@@ -127,6 +143,96 @@ export default function GuestsPage() {
       setErrors({ firstName: 'Network error. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Edit modal ─────────────────────────────────────────────────────────
+  function openEdit(g: Guest, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditGuest(g);
+    setEditForm({
+      firstName: g.firstName ?? '',
+      lastName: g.lastName ?? '',
+      email: g.email ?? '',
+      phone: g.phone ?? '',
+      nationality: g.nationality ?? '',
+      idType: g.idType ?? 'Passport',
+      idNumber: g.idNumber ?? '',
+      address: g.address ?? '',
+      notes: g.notes ?? '',
+    });
+    setEditErrors({});
+  }
+  function closeEdit() { setEditGuest(null); }
+
+  function validateEdit() {
+    const e: Partial<typeof EMPTY_FORM> = {};
+    if (!editForm.firstName.trim()) e.firstName = 'Required';
+    if (!editForm.lastName.trim()) e.lastName = 'Required';
+    if (editForm.email && !/\S+@\S+\.\S+/.test(editForm.email)) e.email = 'Invalid email';
+    if (!editForm.idNumber.trim()) e.idNumber = 'Required';
+    setEditErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function handleEditSubmit() {
+    if (!editGuest || !validateEdit()) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/guests?id=${editGuest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: editForm.firstName.trim(),
+          lastName: editForm.lastName.trim(),
+          email: editForm.email.trim() || null,
+          phone: editForm.phone.trim() || null,
+          nationality: editForm.nationality.trim() || null,
+          idType: editForm.idType,
+          idNumber: editForm.idNumber.trim(),
+          address: editForm.address.trim() || null,
+          notes: editForm.notes.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setGuests(prev => prev.map(g => g.id === updated.id ? { ...g, ...updated } : g));
+        closeEdit();
+      } else {
+        const data = await res.json();
+        setEditErrors({ firstName: data.error || 'Failed to update guest.' });
+      }
+    } catch {
+      setEditErrors({ firstName: 'Network error. Please try again.' });
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────
+  function openDelete(g: Guest, e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeleteGuest(g);
+    setDeleteError('');
+  }
+  function closeDelete() { setDeleteGuest(null); setDeleteError(''); }
+
+  async function handleDelete() {
+    if (!deleteGuest) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/guests?id=${deleteGuest.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setGuests(prev => prev.filter(g => g.id !== deleteGuest.id));
+        closeDelete();
+      } else {
+        const data = await res.json();
+        setDeleteError(data.error || 'Failed to delete guest.');
+      }
+    } catch {
+      setDeleteError('Network error. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -172,7 +278,7 @@ export default function GuestsPage() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <div className="search-field">
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search guests..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search guests..." className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} autoComplete="off" name="guest-search" />
           </div>
           <button
             onClick={() => setActiveOnly(v => !v)}
@@ -189,10 +295,10 @@ export default function GuestsPage() {
 
       {/* Guest cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-          {filtered.map((guest, i) => {
-            const activeReservation = activeReservationByGuest.get(guest.id);
-            return (
-            <div key={guest.id} className="surface" style={{ borderRadius: '12px', padding: '20px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        {filtered.map((guest, i) => {
+          const activeReservation = activeReservationByGuest.get(guest.id);
+          return (
+            <div key={guest.id} className="surface" style={{ borderRadius: '12px', padding: '20px', transition: 'border-color 0.2s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
             >
@@ -259,13 +365,25 @@ export default function GuestsPage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '14px' }}>
-                <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>View History</button>
-                <button className="btn btn-primary" style={{ fontSize: '12px', padding: '7px', justifyContent: 'center' }}>Edit</button>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '12px', padding: '7px', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '5px', color: '#C97D6E' }}
+                  onClick={(e) => openDelete(guest, e)}
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ fontSize: '12px', padding: '7px', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  onClick={(e) => openEdit(guest, e)}
+                >
+                  <Pencil size={12} /> Edit
+                </button>
               </div>
             </div>
-            );
-          })}
-        </div>
+          );
+        })}
+      </div>
 
       {filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
@@ -274,14 +392,13 @@ export default function GuestsPage() {
         </div>
       )}
 
-      {/* Add Guest Modal */}
+      {/* ── Add Guest Modal ──────────────────────────────────────────────── */}
       {showModal && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
           onClick={e => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div className="surface" style={{ borderRadius: '16px', width: '100%', maxWidth: '520px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
-            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <div className="font-display" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Add New Guest</div>
@@ -291,15 +408,12 @@ export default function GuestsPage() {
                 <X size={16} />
               </button>
             </div>
-
-            {/* Body */}
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {errors.firstName && !form.firstName && (
                 <div style={{ fontSize: '12.5px', color: '#C97D6E', padding: '10px 12px', borderRadius: '8px', background: 'rgba(201,125,110,0.08)', border: '1px solid rgba(201,125,110,0.2)' }}>
                   {errors.firstName}
                 </div>
               )}
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>First Name <span style={{ color: '#C97D6E' }}>*</span></label>
@@ -312,7 +426,6 @@ export default function GuestsPage() {
                   {errors.lastName && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{errors.lastName}</div>}
                 </div>
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Email</label>
@@ -324,12 +437,10 @@ export default function GuestsPage() {
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+63 917 000 0000" style={inputStyle()} />
                 </div>
               </div>
-
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Nationality</label>
                 <input value={form.nationality} onChange={e => setForm(f => ({ ...f, nationality: e.target.value }))} placeholder="Filipino" style={inputStyle()} />
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>ID Type</label>
@@ -348,13 +459,123 @@ export default function GuestsPage() {
                 </div>
               </div>
             </div>
-
-            {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
               <button onClick={closeModal} disabled={saving} className="btn btn-ghost" style={{ height: '38px', fontSize: '13px' }}>Cancel</button>
               <button onClick={handleSubmit} disabled={saving} className="btn btn-primary" style={{ height: '38px', fontSize: '13px', minWidth: '110px' }}>
                 {saving ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Plus size={14} />}
                 {saving ? 'Saving…' : 'Add Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Guest Modal ─────────────────────────────────────────────── */}
+      {editGuest && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          onClick={e => { if (e.target === e.currentTarget) closeEdit(); }}
+        >
+          <div className="surface" style={{ borderRadius: '16px', width: '100%', maxWidth: '520px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div>
+                <div className="font-display" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Edit Guest</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{editGuest.firstName} {editGuest.lastName}</div>
+              </div>
+              <button onClick={closeEdit} className="btn btn-ghost" style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {editErrors.firstName && !editForm.firstName && (
+                <div style={{ fontSize: '12.5px', color: '#C97D6E', padding: '10px 12px', borderRadius: '8px', background: 'rgba(201,125,110,0.08)', border: '1px solid rgba(201,125,110,0.2)' }}>
+                  {editErrors.firstName}
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>First Name <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={editForm.firstName} onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))} style={inputStyle(editErrors.firstName)} />
+                  {editErrors.firstName && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{editErrors.firstName}</div>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Last Name <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))} style={inputStyle(editErrors.lastName)} />
+                  {editErrors.lastName && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{editErrors.lastName}</div>}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Email</label>
+                  <input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} type="email" style={inputStyle(editErrors.email)} />
+                  {editErrors.email && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{editErrors.email}</div>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Phone</label>
+                  <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle()} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Nationality</label>
+                <input value={editForm.nationality} onChange={e => setEditForm(f => ({ ...f, nationality: e.target.value }))} style={inputStyle()} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>ID Type</label>
+                  <select value={editForm.idType} onChange={e => setEditForm(f => ({ ...f, idType: e.target.value }))} style={{ ...inputStyle(), appearance: 'none' as const }}>
+                    <option>Passport</option>
+                    <option>Driver&apos;s License</option>
+                    <option>National ID</option>
+                    <option>SSS ID</option>
+                    <option>PhilHealth ID</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>ID Number <span style={{ color: '#C97D6E' }}>*</span></label>
+                  <input value={editForm.idNumber} onChange={e => setEditForm(f => ({ ...f, idNumber: e.target.value }))} style={inputStyle(editErrors.idNumber)} />
+                  {editErrors.idNumber && <div style={{ fontSize: '11px', color: '#C97D6E', marginTop: '4px' }}>{editErrors.idNumber}</div>}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
+              <button onClick={closeEdit} disabled={editSaving} className="btn btn-ghost" style={{ height: '38px', fontSize: '13px' }}>Cancel</button>
+              <button onClick={handleEditSubmit} disabled={editSaving} className="btn btn-primary" style={{ height: '38px', fontSize: '13px', minWidth: '120px' }}>
+                {editSaving ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Pencil size={14} />}
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
+      {deleteGuest && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          onClick={e => { if (e.target === e.currentTarget) closeDelete(); }}
+        >
+          <div className="surface" style={{ borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div className="font-display" style={{ fontSize: '16px', fontWeight: 700, color: '#C97D6E' }}>Delete Guest</div>
+              <button onClick={closeDelete} className="btn btn-ghost" style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                Are you sure you want to delete <strong>{deleteGuest.firstName} {deleteGuest.lastName}</strong>? This cannot be undone.
+              </p>
+              {deleteError && (
+                <div style={{ fontSize: '12.5px', color: '#C97D6E', padding: '10px 12px', borderRadius: '8px', background: 'rgba(201,125,110,0.08)', border: '1px solid rgba(201,125,110,0.2)' }}>
+                  {deleteError}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
+              <button onClick={closeDelete} disabled={deleting} className="btn btn-ghost" style={{ height: '38px', fontSize: '13px' }}>Cancel</button>
+              <button onClick={handleDelete} disabled={deleting} className="btn btn-primary" style={{ height: '38px', fontSize: '13px', minWidth: '110px', background: '#C97D6E', borderColor: '#C97D6E' }}>
+                {deleting ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Trash2 size={14} />}
+                {deleting ? 'Deleting…' : 'Delete Guest'}
               </button>
             </div>
           </div>

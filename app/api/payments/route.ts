@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { payments, reservations, guests, rooms } from '@/lib/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, count } from 'drizzle-orm';
 import { getSessionUser } from '@/lib/session';
 
 function requireAuth(req: NextRequest) {
@@ -41,13 +41,19 @@ export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   try {
+    const { searchParams } = new URL(req.url);
+    const limit  = Math.min(parseInt(searchParams.get('limit')  ?? '50'), 200);
+    const offset = parseInt(searchParams.get('offset') ?? '0');
+
     const data = await db
       .select()
       .from(payments)
       .leftJoin(reservations, eq(payments.reservationId, reservations.id))
       .leftJoin(guests, eq(reservations.guestId, guests.id))
       .leftJoin(rooms, eq(reservations.roomId, rooms.id))
-      .orderBy(desc(payments.createdAt));
+      .orderBy(desc(payments.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const result = data.map(({ payments: p, reservations: r, guests: g, rooms: rm }) => {
       const resolvedName = r?.guestName || (g ? `${g.firstName ?? ''} ${g.lastName ?? ''}`.trim() : undefined);

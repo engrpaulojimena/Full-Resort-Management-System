@@ -140,30 +140,33 @@ function ImageCarousel({ images, type }: { images: string[]; type: RoomType }) {
 // ─── Image manager (edit/add mode) ───────────────────────────────────────────
 function ImageManager({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [urlInput, setUrlInput] = useState('');
-  const [urlError, setUrlError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
-  function addUrl() {
-    const url = urlInput.trim();
-    if (!url) return;
-    try { new URL(url); } catch { setUrlError('Invalid URL'); return; }
-    if (images.includes(url)) { setUrlError('Already added'); return; }
-    onChange([...images, url]);
-    setUrlInput('');
-    setUrlError('');
-  }
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setUploadError('');
 
-  function handleFiles(files: FileList | null) {
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        const result = e.target?.result as string;
-        if (result) onChange([...images, result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    const uploaded: string[] = [];
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Upload failed');
+        const { url } = await res.json();
+        uploaded.push(url);
+      } catch {
+        setUploadError(`Failed to upload ${file.name}`);
+      }
+    }
+
+    if (uploaded.length > 0) onChange([...images, ...uploaded]);
+    setUploading(false);
+    // Reset file input so same file can be re-selected
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   function remove(i: number) {
@@ -174,46 +177,28 @@ function ImageManager({ images, onChange }: { images: string[]; onChange: (imgs:
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Room Photos</label>
 
-      {/* Upload / URL row */}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        {/* File upload button */}
-        <button type="button" onClick={() => fileRef.current?.click()}
-          className="btn btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', height: '36px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <Upload size={13} /> Upload
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-          onChange={e => handleFiles(e.target.files)} />
-
-        {/* URL input */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <input
-            value={urlInput}
-            onChange={e => { setUrlInput(e.target.value); setUrlError(''); }}
-            onKeyDown={e => e.key === 'Enter' && addUrl()}
-            placeholder="Or paste image URL and press Enter…"
-            style={{ ...inp, paddingRight: '70px' }}
-          />
-          <button type="button" onClick={addUrl}
-            style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '6px', padding: '3px 10px', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600 }}>
-            Add
-          </button>
-        </div>
-      </div>
-      {urlError && <p style={{ fontSize: '11.5px', color: '#C97D6E', margin: 0 }}>{urlError}</p>}
-
       {/* Drag-and-drop zone (when no images) */}
-      {images.length === 0 && (
+      {images.length === 0 && !uploading && (
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-          style={{ border: '1.5px dashed var(--border)', borderRadius: '10px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '12px' }}>
+          style={{ border: '1.5px dashed var(--border)', borderRadius: '10px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '12px' }}>
           <ImageIcon size={28} strokeWidth={1.2} />
           <span>Drop images here or click to upload</span>
-          <span style={{ fontSize: '11px', opacity: 0.7 }}>JPG, PNG, WebP supported</span>
+          <span style={{ fontSize: '11px', opacity: 0.7 }}>JPG, PNG, WebP — uploaded to Cloudinary</span>
         </div>
       )}
+
+      {/* Uploading state */}
+      {uploading && (
+        <div style={{ border: '1.5px dashed var(--border)', borderRadius: '10px', padding: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '12px' }}>
+          <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+          <span>Uploading to Cloudinary…</span>
+        </div>
+      )}
+
+      {uploadError && <p style={{ fontSize: '11.5px', color: '#C97D6E', margin: 0 }}>{uploadError}</p>}
 
       {/* Thumbnails grid */}
       {images.length > 0 && (
@@ -231,12 +216,25 @@ function ImageManager({ images, onChange }: { images: string[]; onChange: (imgs:
             </div>
           ))}
           {/* Add more tile */}
-          <div onClick={() => fileRef.current?.click()}
-            style={{ aspectRatio: '1', borderRadius: '8px', border: '1.5px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
-            <Plus size={20} strokeWidth={1.5} />
-          </div>
+          {!uploading && (
+            <div onClick={() => fileRef.current?.click()}
+              style={{ aspectRatio: '1', borderRadius: '8px', border: '1.5px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <Plus size={20} strokeWidth={1.5} />
+            </div>
+          )}
         </div>
       )}
+
+      <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+        onChange={e => handleFiles(e.target.files)} />
+
+      {/* Upload button always visible */}
+      <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+        className="btn btn-ghost"
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', height: '34px', alignSelf: 'flex-start' }}>
+        {uploading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />}
+        {uploading ? 'Uploading…' : images.length > 0 ? 'Add More Photos' : 'Choose Photos'}
+      </button>
     </div>
   );
 }

@@ -102,7 +102,7 @@ export default function RoomsPage() {
           <div className="search-field">
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search rooms…"
-              className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} />
+              className="input" style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }} autoComplete="off" name="rooms-search" />
           </div>
           <button className="btn btn-primary" style={{ height: '36px' }} onClick={openAdd}>
             <Plus size={15} /> Add Room
