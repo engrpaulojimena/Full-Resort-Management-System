@@ -4,8 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
-  CalendarCheck, CalendarCheck, BedDouble, Users,
-  CreditCard, Bell, Bell, Settings, X, Users, CreditCard,
+  CalendarCheck, BedDouble, Users,
+  CreditCard, Bell, Settings, X,
 } from 'lucide-react';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAuth } from '@/components/providers/AuthProvider';

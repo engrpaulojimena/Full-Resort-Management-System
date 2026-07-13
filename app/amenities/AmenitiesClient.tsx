@@ -5,8 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   Waves, Utensils, Music, Umbrella, Fish, Sun,
-  Clock, MapPin, Users, ChevronDown, ChevronUp,
-  MapPin, User, Users, Waves
+  Clock, MapPin, Users, ChevronDown, ChevronUp, User
 } from 'lucide-react'
 
 const categories = ['All', 'Water & Pool', 'Dining', 'Events', 'Outdoor'] as const

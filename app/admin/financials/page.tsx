@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, AlertTriangle, CreditCard as DollarSign, Eye, Check, X, Plus, Trash2 } from 'lucide-react';
+import {
+  CreditCard,
+  AlertTriangle,
+  Eye,
+  Check,
+  X,
+  Plus,
+  Trash2
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { FinancialsSkeleton } from '@/components/ui/Skeleton';
 

@@ -2,7 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { X, ChevronLeft, ChevronRight, Eye, Waves, Sun, BedDouble, BedDouble as Building2, Star, AlertTriangle } from 'lucide-react'
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Waves,
+  Sun,
+  BedDouble,
+  Star,
+  AlertTriangle
+} from 'lucide-react'
 
 type Category = 'All' | 'Pool' | 'Sunset' | 'Rooms' | 'Exterior'
 

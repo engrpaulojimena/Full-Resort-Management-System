@@ -7,7 +7,6 @@ import {
   Star,
   CalendarCheck,
   Users,
-  Users,
   BedDouble,
   Plus,
   Waves,

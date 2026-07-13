@@ -2,8 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  X, Loader2, Eye, Upload, Trash2, Eye as ImageIcon,
-  BedDouble, Users, CreditCard, Home, Umbrella, Star, ArrowRight, ChevronRight, Plus,
+  X,
+  Loader2,
+  Eye,
+  Upload,
+  Trash2,
+  BedDouble,
+  Users,
+  CreditCard,
+  Home,
+  Umbrella,
+  Star,
+  ArrowRight,
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Room, RoomType, RoomStatus } from '@/types';

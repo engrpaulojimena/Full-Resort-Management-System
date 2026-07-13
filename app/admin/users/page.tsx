@@ -1,7 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Shield, ShieldCheck, User, Eye, Trash2, Loader2, X, Eye, XCircle, Check } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Shield,
+  ShieldCheck,
+  User,
+  Eye,
+  Trash2,
+  Loader2,
+  X,
+  XCircle,
+  Check
+} from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { getInitials, formatDateTime } from '@/lib/utils';
 import { User as UserType, UserRole } from '@/types';

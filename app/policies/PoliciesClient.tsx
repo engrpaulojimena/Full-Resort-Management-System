@@ -5,7 +5,6 @@ import Link from 'next/link'
 import {
   ShieldCheck,
   Users,
-  Users,
   BedDouble,
   Utensils,
   AlertTriangle,
@@ -15,12 +14,8 @@ import {
   FileDown,
   CalendarCheck,
   Clock,
-  Waves,
   CreditCard,
-  Users,
-  XCircle,
   ArrowRight,
-  AlertTriangle,
 } from 'lucide-react'
 
 const guidelines = [
