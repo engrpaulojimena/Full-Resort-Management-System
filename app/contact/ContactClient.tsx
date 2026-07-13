@@ -7,13 +7,13 @@ import {
   Phone,
   Mail,
   Clock,
-  Facebook,
-  Instagram,
-  Youtube,
-  Send,
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
+  MessageCircle,
+  Play,
+  ArrowRight,
 } from 'lucide-react'
 
 const faqs = [
@@ -144,9 +144,9 @@ export default function ContactClient() {
                 <h2 className="font-display font-bold text-xl text-gray-900 mb-4">Follow Us</h2>
                 <div className="flex gap-3">
                   {[
-                    { icon: Facebook, href: 'https://facebook.com/kekamiyabeachresort', label: 'Facebook', color: 'hover:bg-blue-500' },
-                    { icon: Instagram, href: '#', label: 'Instagram', color: 'hover:bg-pink-500' },
-                    { icon: Youtube, href: '#', label: 'YouTube', color: 'hover:bg-red-500' },
+                    { icon: ExternalLink, href: 'https://facebook.com/kekamiyabeachresort', label: 'Facebook', color: 'hover:bg-blue-500' },
+                    { icon: MessageCircle, href: '#', label: 'Instagram', color: 'hover:bg-pink-500' },
+                    { icon: Play, href: '#', label: 'YouTube', color: 'hover:bg-red-500' },
                   ].map(({ icon: Icon, href, label, color }) => (
                     <a
                       key={label}
@@ -306,7 +306,7 @@ export default function ContactClient() {
                           </>
                         ) : (
                           <>
-                            <Send className="w-4 h-4" />
+                            <ArrowRight className="w-4 h-4" />
                             Send Message
                           </>
                         )}
